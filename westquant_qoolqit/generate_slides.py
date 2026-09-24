@@ -1,13 +1,15 @@
-"""Generate slide decks (HTML + PDF) for all three contest variants.
+"""Generate slide decks (HTML + PPTX) for all three contest variants.
 
 All result numbers are read from results/runs/flagship_v3/processed/report_metrics.json.
 Style: dark navy background matching WQT20 brand, WestQuant logo at top.
+PPTX is the primary format (editable in PowerPoint/Keynote); HTML is a bonus.
 """
 
 from __future__ import annotations
 
 import json
 import re
+import shutil
 from pathlib import Path
 
 import matplotlib
@@ -15,6 +17,11 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
 from matplotlib.backends.backend_pdf import PdfPages
+
+from pptx import Presentation
+from pptx.util import Inches, Pt, Emu
+from pptx.dml.color import RGBColor
+from pptx.enum.text import PP_ALIGN, MSO_ANCHOR
 
 REPO = Path(__file__).resolve().parent.parent
 
@@ -39,12 +46,12 @@ N_FEASIBLE_FACTOR = METRICS.get("n_feasible_factor_cells", 103)
 QOOLQIT_VERSION = METRICS.get("qoolqit_version", "1.4.0")
 
 # Brand colors from WQT20 image
-BG_COLOR = "#000e22"
-ACCENT_COLOR = "#1a4ba0"
-TEXT_COLOR = "#ffffff"
-SUBTITLE_COLOR = "#7fb3ff"
-BODY_COLOR = "#c8d8f0"
-FOOTER_COLOR = "#4a6a9a"
+BG_COLOR = RGBColor(0x00, 0x0e, 0x22)
+ACCENT_COLOR = RGBColor(0x1a, 0x4b, 0xa0)
+TEXT_COLOR = RGBColor(0xff, 0xff, 0xff)
+SUBTITLE_COLOR = RGBColor(0x7f, 0xb3, 0xff)
+BODY_COLOR = RGBColor(0xc8, 0xd8, 0xf0)
+FOOTER_COLOR = RGBColor(0x4a, 0x6a, 0x9a)
 
 
 def parse_bold(text: str) -> list[tuple[str, bool]]:
@@ -60,77 +67,110 @@ def parse_bold(text: str) -> list[tuple[str, bool]]:
     return segments
 
 
-def render_slide(fig, title: str, slide_title: str, items: list[str],
-                 logo_path: Path | None = None):
-    """Render one slide on the given figure with dark navy background and logo."""
-    fig.patch.set_facecolor(BG_COLOR)
-    fig.subplots_adjust(left=0, right=1, top=1, bottom=0)
-    ax = fig.add_axes([0, 0, 1, 1])
-    ax.set_xlim(0, 1)
-    ax.set_ylim(0, 1)
-    ax.axis("off")
-    ax.set_facecolor(BG_COLOR)
+def add_pptx_slide(prs: Presentation, title: str, slide_title: str,
+                  items: list[str], logo_path: Path | None = None):
+    """Add one slide to the PowerPoint presentation."""
+    slide_layout = prs.slide_layouts[6]  # blank layout
+    slide = prs.slides.add_slide(slide_layout)
+
+    # Set background color
+    bg = slide.background
+    bg.fill.solid()
+    bg.fill.fore_color.rgb = BG_COLOR
 
     # Logo at top-left
     if logo_path and logo_path.exists():
-        logo_img = mpimg.imread(str(logo_path))
-        lh, lw = logo_img.shape[:2]
-        aspect = lw / lh
-        logo_w = 0.22
-        logo_h = logo_w / aspect
-        logo_x = 0.04
-        logo_y = 0.88
-        ax.imshow(logo_img, extent=[logo_x, logo_x + logo_w,
-                                    logo_y, logo_y + logo_h],
-                  zorder=10, aspect='auto', alpha=0.85)
+        slide.shapes.add_picture(str(logo_path),
+                                 Inches(0.4), Inches(0.25),
+                                 width=Inches(2.8))
 
     # Title
-    fig.text(0.04, 0.82, title, fontsize=22, fontweight="bold",
-             color=TEXT_COLOR, va="top")
+    txBox = slide.shapes.add_textbox(Inches(0.4), Inches(1.0),
+                                     Inches(12.5), Inches(0.6))
+    tf = txBox.text_frame
+    tf.word_wrap = True
+    p = tf.paragraphs[0]
+    p.text = title
+    p.font.size = Pt(28)
+    p.font.bold = True
+    p.font.color.rgb = TEXT_COLOR
 
     # Slide subtitle
-    fig.text(0.04, 0.75, slide_title, fontsize=15, color=SUBTITLE_COLOR, va="top")
+    txBox2 = slide.shapes.add_textbox(Inches(0.4), Inches(1.55),
+                                      Inches(12.5), Inches(0.4))
+    tf2 = txBox2.text_frame
+    tf2.word_wrap = True
+    p2 = tf2.paragraphs[0]
+    p2.text = slide_title
+    p2.font.size = Pt(18)
+    p2.font.color.rgb = SUBTITLE_COLOR
 
-    # Accent line under subtitle
-    ax.plot([0.04, 0.96], [0.72, 0.72], color=ACCENT_COLOR,
-            linewidth=2, transform=ax.transAxes)
+    # Accent line (thin rectangle)
+    from pptx.enum.shapes import MSO_SHAPE
+    line = slide.shapes.add_shape(MSO_SHAPE.RECTANGLE,
+                                  Inches(0.4), Inches(2.05),
+                                  Inches(12.5), Pt(2))
+    line.fill.solid()
+    line.fill.fore_color.rgb = ACCENT_COLOR
+    line.line.fill.background()
 
-    # Items with bold parsing — use figure text for reliability
-    y_start = 0.66
-    y_step = 0.085
-    y = y_start
+    # Items with bold parsing
+    txBox3 = slide.shapes.add_textbox(Inches(0.5), Inches(2.3),
+                                       Inches(12.3), Inches(4.5))
+    tf3 = txBox3.text_frame
+    tf3.word_wrap = True
+
+    first = True
     for item in items:
+        if first:
+            p = tf3.paragraphs[0]
+            first = False
+        else:
+            p = tf3.add_paragraph()
+        p.space_after = Pt(14)
+
         segments = parse_bold(item)
-        # Build a single line with mixed weights using annotate
-        x = 0.06
-        for text, is_bold in segments:
-            weight = "bold" if is_bold else "normal"
-            color = TEXT_COLOR if is_bold else BODY_COLOR
-            fontsize = 13
-            fig.text(x, y, text, fontsize=fontsize, color=color,
-                     fontweight=weight, va="top", family="sans-serif")
-            # Advance x by approximate text width
-            approx_width = len(text) * 0.0068 * (fontsize / 13)
-            x += approx_width
-        y -= y_step
+        for i, (text, is_bold) in enumerate(segments):
+            if i == 0:
+                run = p.runs[0] if p.runs else p.add_run()
+                run.text = text
+            else:
+                run = p.add_run()
+                run.text = text
+            run.font.size = Pt(14)
+            run.font.bold = is_bold
+            run.font.color.rgb = TEXT_COLOR if is_bold else BODY_COLOR
 
-    # Footer
-    fig.text(0.04, 0.03, f"WestQuant Representation Stack — QoolQit {QOOLQIT_VERSION}",
-             fontsize=10, color=FOOTER_COLOR)
-    fig.text(0.96, 0.03, "WestQuant Open Artifact #001",
-             fontsize=10, color=FOOTER_COLOR, ha="right")
+    # Footer left
+    txBox4 = slide.shapes.add_textbox(Inches(0.4), Inches(6.9),
+                                      Inches(6), Inches(0.3))
+    tf4 = txBox4.text_frame
+    p4 = tf4.paragraphs[0]
+    p4.text = f"WestQuant Representation Stack — QoolQit {QOOLQIT_VERSION}"
+    p4.font.size = Pt(11)
+    p4.font.color.rgb = FOOTER_COLOR
+
+    # Footer right
+    txBox5 = slide.shapes.add_textbox(Inches(7.5), Inches(6.9),
+                                      Inches(5.5), Inches(0.3))
+    tf5 = txBox5.text_frame
+    p5 = tf5.paragraphs[0]
+    p5.text = "WestQuant Open Artifact #001"
+    p5.font.size = Pt(11)
+    p5.font.color.rgb = FOOTER_COLOR
+    p5.alignment = PP_ALIGN.RIGHT
 
 
-def make_pdf(path: Path, title: str, slide1_title: str, slide1_items: list[str],
-             slide2_title: str, slide2_items: list[str], logo_path: Path) -> None:
+def make_pptx(path: Path, title: str, slide1_title: str, slide1_items: list[str],
+              slide2_title: str, slide2_items: list[str], logo_path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
+    prs = Presentation()
+    prs.slide_width = Inches(13.333)
+    prs.slide_height = Inches(7.5)
 
-    with PdfPages(str(path)) as pdf:
-        for slide_title, items in [(slide1_title, slide1_items), (slide2_title, slide2_items)]:
-            fig = plt.figure(figsize=(13.33, 7.5))
-            render_slide(fig, title, slide_title, items, logo_path)
-            pdf.savefig(fig, facecolor=BG_COLOR)
-            plt.close(fig)
+    add_pptx_slide(prs, title, slide1_title, slide1_items, logo_path)
+    add_pptx_slide(prs, title, slide2_title, slide2_items, logo_path)
+    prs.save(str(path))
 
 
 def make_html(path: Path, title: str, slide1: list[str], slide2: list[str]) -> None:
@@ -146,16 +186,16 @@ def make_html(path: Path, title: str, slide1: list[str], slide2: list[str]) -> N
     html = f"""<!DOCTYPE html>
 <html><head><meta charset="utf-8"><title>{title}</title>
 <style>
-body {{ font-family: -apple-system, Helvetica, Arial, sans-serif; margin: 0; background: {BG_COLOR}; }}
+body {{ font-family: -apple-system, Helvetica, Arial, sans-serif; margin: 0; background: #000e22; }}
 .slide {{ width: 1280px; height: 720px; padding: 48px 64px; box-sizing: border-box;
-          page-break-after: always; position: relative; background: {BG_COLOR}; color: {TEXT_COLOR}; }}
-.slide h1 {{ font-size: 28px; margin-bottom: 24px; color: {TEXT_COLOR}; }}
-.slide h2 {{ font-size: 22px; color: {SUBTITLE_COLOR}; margin-top: 0; }}
+          page-break-after: always; position: relative; background: #000e22; color: #ffffff; }}
+.slide h1 {{ font-size: 28px; margin-bottom: 24px; color: #ffffff; }}
+.slide h2 {{ font-size: 22px; color: #7fb3ff; margin-top: 0; }}
 .slide ul {{ font-size: 18px; line-height: 1.6; list-style: none; padding: 0; }}
-.slide li {{ margin-bottom: 12px; color: {BODY_COLOR}; }}
-.slide li b {{ color: {TEXT_COLOR}; }}
-.footer {{ position: absolute; bottom: 24px; left: 64px; font-size: 13px; color: {FOOTER_COLOR}; }}
-.footer-right {{ position: absolute; bottom: 24px; right: 64px; font-size: 13px; color: {FOOTER_COLOR}; }}
+.slide li {{ margin-bottom: 12px; color: #c8d8f0; }}
+.slide li b {{ color: #ffffff; }}
+.footer {{ position: absolute; bottom: 24px; left: 64px; font-size: 13px; color: #4a6a9a; }}
+.footer-right {{ position: absolute; bottom: 24px; right: 64px; font-size: 13px; color: #4a6a9a; }}
 </style></head><body>
 <div class="slide"><h1>{title}</h1><h2>Slide 1 — Project Overview</h2><ul>{s1}</ul>
 <div class="footer">WestQuant Representation Stack — QoolQit {QOOLQIT_VERSION}</div>
@@ -165,6 +205,14 @@ body {{ font-family: -apple-system, Helvetica, Arial, sans-serif; margin: 0; bac
 <div class="footer-right">WestQuant Open Artifact #001</div></div>
 </body></html>"""
     path.write_text(html)
+
+
+def copy_notebook(slides_dir: Path, notebook_name: str = "westquant_representation_stack_combined.ipynb"):
+    """Copy the combined notebook into the slides directory."""
+    src = REPO / "notebooks" / notebook_name
+    if src.exists():
+        dst = slides_dir / notebook_name
+        shutil.copy2(src, dst)
 
 
 # =========================================================================== #
@@ -188,9 +236,10 @@ slides_a_2 = [
 
 make_html(SLIDES_A_DIR / "slides.html", "WestQuant Representation Scheduler (Project A)",
           slides_a_1, slides_a_2)
-make_pdf(SLIDES_A_DIR / "slides.pdf", "WestQuant Representation Scheduler (Project A)",
-         "Slide 1 — Project Overview", slides_a_1,
-         "Slide 2 — QoolQit Experience", slides_a_2, LOGO_A)
+make_pptx(SLIDES_A_DIR / "slides.pptx", "WestQuant Representation Scheduler (Project A)",
+          "Slide 1 — Project Overview", slides_a_1,
+          "Slide 2 — QoolQit Experience", slides_a_2, LOGO_A)
+copy_notebook(SLIDES_A_DIR, "project_A_representation_scheduler.ipynb")
 
 
 # =========================================================================== #
@@ -214,9 +263,10 @@ slides_b_2 = [
 
 make_html(SLIDES_B_DIR / "slides.html", "WestQuant Hamiltonian Representation Explorer (Project B)",
           slides_b_1, slides_b_2)
-make_pdf(SLIDES_B_DIR / "slides.pdf", "WestQuant Hamiltonian Representation Explorer (Project B)",
-         "Slide 1 — Project Overview", slides_b_1,
-         "Slide 2 — QoolQit Experience", slides_b_2, LOGO_B)
+make_pptx(SLIDES_B_DIR / "slides.pptx", "WestQuant Hamiltonian Representation Explorer (Project B)",
+          "Slide 1 — Project Overview", slides_b_1,
+          "Slide 2 — QoolQit Experience", slides_b_2, LOGO_B)
+copy_notebook(SLIDES_B_DIR, "project_B_hamiltonian_explorer.ipynb")
 
 
 # =========================================================================== #
@@ -240,11 +290,14 @@ slides_c_2 = [
 
 make_html(SLIDES_C_DIR / "slides.html", "WestQuant Representation Stack (Combined)",
           slides_c_1, slides_c_2)
-make_pdf(SLIDES_C_DIR / "slides.pdf", "WestQuant Representation Stack (Combined)",
-         "Slide 1 — Project Overview", slides_c_1,
-         "Slide 2 — QoolQit Experience", slides_c_2, LOGO_C)
+make_pptx(SLIDES_C_DIR / "slides.pptx", "WestQuant Representation Stack (Combined)",
+          "Slide 1 — Project Overview", slides_c_1,
+          "Slide 2 — QoolQit Experience", slides_c_2, LOGO_C)
+copy_notebook(SLIDES_C_DIR, "westquant_representation_stack_combined.ipynb")
 
 
-print("Generated slide decks (HTML + PDF):")
+print("Generated slide decks (HTML + PPTX) with notebooks:")
 for p in sorted((REPO / "contest").rglob("slides.*")):
+    print(f"  {p} ({p.stat().st_size} bytes)")
+for p in sorted((REPO / "contest").rglob("*.ipynb")):
     print(f"  {p} ({p.stat().st_size} bytes)")

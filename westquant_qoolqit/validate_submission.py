@@ -232,9 +232,9 @@ def validate_submission(experiment_id_override: str | None = None) -> bool:
 
     # 12. Check slides
     print("\n12. Slide decks:")
-    for deck in ["contest/project_A/slides/slides.pdf",
-                 "contest/project_B/slides/slides.pdf",
-                 "contest/combined/slides/slides.pdf"]:
+    for deck in ["contest/project_A/slides/slides.pptx",
+                 "contest/project_B/slides/slides.pptx",
+                 "contest/combined/slides/slides.pptx"]:
         if not check_file(REPO_ROOT / deck, f"Slides {deck}"):
             all_ok = False
 
