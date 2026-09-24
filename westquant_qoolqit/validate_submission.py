@@ -49,8 +49,12 @@ def check_file(path: Path, description: str) -> bool:
         return False
 
 
-def validate_submission() -> bool:
-    """Run all validation checks. Returns True if all pass."""
+def validate_submission(experiment_id_override: str | None = None) -> bool:
+    """Run all validation checks. Returns True if all pass.
+    
+    If experiment_id_override is given, use it instead of reading results/latest.txt.
+    This allows CI to validate flagship_v3 even after smoke overwrites latest.txt.
+    """
     print("=== WestQuant QoolQit Submission Validation ===\n")
     all_ok = True
 
@@ -63,64 +67,59 @@ def validate_submission() -> bool:
     # 2. Check results
     print("\n2. Results:")
     latest_file = REPO_ROOT / "results" / "latest.txt"
-    if latest_file.exists():
+    if experiment_id_override:
+        experiment_id = experiment_id_override
+        print(f"  [INFO] Using explicit experiment ID: {experiment_id}")
+    elif latest_file.exists():
         experiment_id = latest_file.read_text().strip()
-        run_dir = REPO_ROOT / "results" / "runs" / experiment_id
-        for f in ["config.yaml", "environment.json"]:
-            if not check_file(run_dir / f, f"Result {f}"):
-                all_ok = False
-        for f in ["summary.json", "report_metrics.json"]:
-            if not check_file(run_dir / "processed" / f, f"Processed {f}"):
-                all_ok = False
-        if not check_file(run_dir / "raw" / "cells.jsonl", "Raw cells"):
-            all_ok = False
     else:
         print("  [FAIL] No results found (run benchmarks first)")
+        return False
+    run_dir = REPO_ROOT / "results" / "runs" / experiment_id
+    for f in ["config.yaml", "environment.json"]:
+        if not check_file(run_dir / f, f"Result {f}"):
+            all_ok = False
+    for f in ["summary.json", "report_metrics.json"]:
+        if not check_file(run_dir / "processed" / f, f"Processed {f}"):
+            all_ok = False
+    if not check_file(run_dir / "raw" / "cells.jsonl", "Raw cells"):
         all_ok = False
 
-    # 3. Check latest.txt points to flagship_v3
-    print("\n3. Latest experiment:")
-    if latest_file.exists():
-        experiment_id = latest_file.read_text().strip()
-        if experiment_id == "flagship_v3":
-            print(f"  [OK] latest.txt points to {experiment_id}")
-        else:
-            print(f"  [FAIL] latest.txt points to {experiment_id} (expected flagship_v3)")
-            all_ok = False
+    # 3. Check experiment ID is flagship_v3
+    print("\n3. Experiment ID:")
+    if experiment_id == "flagship_v3":
+        print(f"  [OK] experiment_id == flagship_v3")
+    else:
+        print(f"  [FAIL] experiment_id == {experiment_id} (expected flagship_v3)")
+        all_ok = False
 
     # 4. Check report experiment_id
     print("\n4. Report experiment_id:")
-    if latest_file.exists():
-        experiment_id = latest_file.read_text().strip()
-        metrics_file = REPO_ROOT / "results" / "runs" / experiment_id / "processed" / "report_metrics.json"
-        if metrics_file.exists():
-            metrics = json.loads(metrics_file.read_text())
-            if metrics.get("experiment_id") == "flagship_v3":
-                print(f"  [OK] experiment_id == flagship_v3")
-            else:
-                print(f"  [FAIL] experiment_id == {metrics.get('experiment_id')} (expected flagship_v3)")
-                all_ok = False
+    metrics_file = REPO_ROOT / "results" / "runs" / experiment_id / "processed" / "report_metrics.json"
+    if metrics_file.exists():
+        metrics = json.loads(metrics_file.read_text())
+        if metrics.get("experiment_id") == "flagship_v3":
+            print(f"  [OK] experiment_id == flagship_v3")
+        else:
+            print(f"  [FAIL] experiment_id == {metrics.get('experiment_id')} (expected flagship_v3)")
+            all_ok = False
 
     # 5. Check QoolQit version
     print("\n5. QoolQit version:")
-    if latest_file.exists():
-        experiment_id = latest_file.read_text().strip()
-        metrics_file = REPO_ROOT / "results" / "runs" / experiment_id / "processed" / "report_metrics.json"
-        if metrics_file.exists():
-            metrics = json.loads(metrics_file.read_text())
-            qoolqit_version = metrics.get("qoolqit_version", "unknown")
-            if qoolqit_version == "1.4.0":
-                print(f"  [OK] QoolQit version: {qoolqit_version}")
-            else:
+    metrics_file = REPO_ROOT / "results" / "runs" / experiment_id / "processed" / "report_metrics.json"
+    if metrics_file.exists():
+        metrics = json.loads(metrics_file.read_text())
+        qoolqit_version = metrics.get("qoolqit_version", "unknown")
+        if qoolqit_version == "1.4.0":
+            print(f"  [OK] QoolQit version: {qoolqit_version}")
+        else:
                 print(f"  [FAIL] QoolQit version: {qoolqit_version} (expected 1.4.0)")
                 all_ok = False
 
     # 6. Check raw observations
     print("\n6. Raw observations:")
-    if latest_file.exists():
-        experiment_id = latest_file.read_text().strip()
-        raw_file = REPO_ROOT / "results" / "runs" / experiment_id / "raw" / "cells.jsonl"
-        if raw_file.exists():
+    raw_file = REPO_ROOT / "results" / "runs" / experiment_id / "raw" / "cells.jsonl"
+    if raw_file.exists():
             records = []
             for line in raw_file.read_text().strip().split("\n"):
                 if line:
@@ -144,10 +143,8 @@ def validate_submission() -> bool:
 
     # 7. Check terminal encoding validity
     print("\n7. Terminal encoding validity:")
-    if latest_file.exists():
-        experiment_id = latest_file.read_text().strip()
-        raw_file = REPO_ROOT / "results" / "runs" / experiment_id / "raw" / "cells.jsonl"
-        if raw_file.exists():
+    raw_file = REPO_ROOT / "results" / "runs" / experiment_id / "raw" / "cells.jsonl"
+    if raw_file.exists():
             total_cells = 0
             invalid_terminal = 0
             emulated_with_invalid = 0
@@ -170,10 +167,8 @@ def validate_submission() -> bool:
 
     # 8. Check all six problems represented
     print("\n8. Problem coverage:")
-    if latest_file.exists():
-        experiment_id = latest_file.read_text().strip()
-        raw_file = REPO_ROOT / "results" / "runs" / experiment_id / "raw" / "cells.jsonl"
-        if raw_file.exists():
+    raw_file = REPO_ROOT / "results" / "runs" / experiment_id / "raw" / "cells.jsonl"
+    if raw_file.exists():
             problems = set()
             embedder_families = set()
             hamiltonian_ids = set()
@@ -199,10 +194,8 @@ def validate_submission() -> bool:
 
     # 9. Check no NaNs in metrics
     print("\n9. No NaNs in metrics:")
-    if latest_file.exists():
-        experiment_id = latest_file.read_text().strip()
-        metrics_file = REPO_ROOT / "results" / "runs" / experiment_id / "processed" / "report_metrics.json"
-        if metrics_file.exists():
+    metrics_file = REPO_ROOT / "results" / "runs" / experiment_id / "processed" / "report_metrics.json"
+    if metrics_file.exists():
             metrics = json.loads(metrics_file.read_text())
             nan_found = False
             for key, val in metrics.items():
@@ -282,11 +275,9 @@ def validate_submission() -> bool:
 
     # 15. Check README metrics match report_metrics.json
     print("\n15. README metrics match report:")
-    if latest_file.exists():
-        experiment_id = latest_file.read_text().strip()
-        metrics_file = REPO_ROOT / "results" / "runs" / experiment_id / "processed" / "report_metrics.json"
-        readme_file = REPO_ROOT / "README.md"
-        if metrics_file.exists() and readme_file.exists():
+    metrics_file = REPO_ROOT / "results" / "runs" / experiment_id / "processed" / "report_metrics.json"
+    readme_file = REPO_ROOT / "README.md"
+    if metrics_file.exists() and readme_file.exists():
             metrics = json.loads(metrics_file.read_text())
             readme = readme_file.read_text()
             # Check key numbers appear in README
@@ -350,5 +341,10 @@ def validate_submission() -> bool:
 
 
 if __name__ == "__main__":
-    ok = validate_submission()
+    import argparse
+    parser = argparse.ArgumentParser(description="Validate WestQuant QoolQit submission")
+    parser.add_argument("--experiment", default=None,
+                        help="Explicit experiment ID to validate (default: read results/latest.txt)")
+    args = parser.parse_args()
+    ok = validate_submission(experiment_id_override=args.experiment)
     sys.exit(0 if ok else 1)

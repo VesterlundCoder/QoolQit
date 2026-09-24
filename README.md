@@ -538,4 +538,4 @@ notebooks are provided for separate submission if preferred.
 
 ## License
 
-MIT
+Apache-2.0. See [LICENSE](LICENSE).

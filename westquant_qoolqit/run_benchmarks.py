@@ -215,8 +215,13 @@ def run_experiment(config: dict, experiment_id: str) -> dict:
     }
 
 
-def save_results(experiment_data: dict, config: dict, experiment_id: str):
-    """Save results under results/runs/<experiment_id>/."""
+def save_results(experiment_data: dict, config: dict, experiment_id: str,
+                 update_latest: bool = True):
+    """Save results under results/runs/<experiment_id>/.
+    
+    If update_latest is False, do not update results/latest.txt (useful in CI
+    to avoid smoke runs overwriting the flagship pointer).
+    """
     run_dir = RESULTS_DIR / "runs" / experiment_id
     raw_dir = run_dir / "raw"
     processed_dir = run_dir / "processed"
@@ -255,9 +260,11 @@ def save_results(experiment_data: dict, config: dict, experiment_id: str):
     with open(processed_dir / "report_metrics.json", "w") as f:
         json.dump(experiment_data["report_metrics"], f, indent=2)
 
-    # Update latest pointer
-    latest_file = RESULTS_DIR / "latest.txt"
-    latest_file.write_text(experiment_id)
+    # Update latest pointer (unless suppressed for CI)
+    if update_latest:
+        latest_file = RESULTS_DIR / "latest.txt"
+        latest_file.write_text(experiment_id)
+        print(f"Updated latest.txt -> {experiment_id}")
 
     print(f"\nResults saved to: {run_dir}")
     print(f"Report metrics: {processed_dir / 'report_metrics.json'}")
@@ -359,6 +366,8 @@ def main():
                         help="Benchmark mode (smoke=fast CI, flagship=official results)")
     parser.add_argument("--config", type=str, default=None,
                         help="Path to experiment config YAML")
+    parser.add_argument("--no-update-latest", action="store_true",
+                        help="Do not update results/latest.txt (useful in CI)")
     args = parser.parse_args()
 
     import yaml
@@ -388,7 +397,8 @@ def main():
     print()
 
     experiment_data = run_experiment(config, experiment_id)
-    run_dir = save_results(experiment_data, config, experiment_id)
+    run_dir = save_results(experiment_data, config, experiment_id,
+                           update_latest=not args.no_update_latest)
     generate_figures(experiment_data, run_dir)
 
     rm = experiment_data["report_metrics"]

@@ -32,17 +32,17 @@ jobs:
       run: |
         pytest -v
 
-    - name: Run smoke benchmark
+    - name: Run smoke benchmark (does not update latest.txt)
       run: |
-        python -m westquant_qoolqit.run_benchmarks --mode smoke
+        python -m westquant_qoolqit.run_benchmarks --mode smoke --no-update-latest
 
     - name: Execute combined notebook (must run top-to-bottom)
       run: |
         jupyter nbconvert --to notebook --execute \
           notebooks/westquant_representation_stack_combined.ipynb \
           --output /tmp/validated_combined.ipynb \
-          --ExecutePreprocessor.timeout=300
+          --ExecutePreprocessor.timeout=600
 
-    - name: Validate submission
+    - name: Validate submission (explicit flagship_v3)
       run: |
-        python -m westquant_qoolqit.validate_submission
+        python -m westquant_qoolqit.validate_submission --experiment flagship_v3

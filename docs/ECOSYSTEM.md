@@ -85,10 +85,45 @@ experimental foundation on which those systems will build.
 
 - **westquant-qiskit**: A Qiskit transpiler stage exposing WestQuant
   representation search as a third-party plugin.
-- **Hugging Face**: A WestQuant Open organization for models, datasets,
-  and Spaces.
 - **Zenodo**: DOI assignment for each release.
 - **OpenSSF**: Scorecard and Best Practices badge.
 
 These are documented in `ROADMAP.md` and are not part of the current
 release.
+
+## Active infrastructure
+
+| Platform | Namespace | Status | Purpose |
+|----------|-----------|--------|---------|
+| GitHub | `VesterlundCoder` (current), `WestQuantOpen` (planned) | Active | Source code, artifacts, CI |
+| Hugging Face | `WestQuantStudio` | Active | Models, datasets, Spaces |
+
+### GitHub organization: WestQuantOpen (planned)
+
+The permanent home for WestQuant Open source artifacts. Future repos:
+- `WestQuantOpen/representation-stack` (this artifact, migrated)
+- `WestQuantOpen/wqir`
+- `WestQuantOpen/repgraph`
+- `WestQuantOpen/transformation-registry`
+- `WestQuantOpen/westquant-qiskit`
+- `WestQuantOpen/wqt-training`
+- `WestQuantOpen/westquant-evals`
+
+### Hugging Face namespace: WestQuantStudio (active)
+
+Purpose:
+- WestQuant models (WQT20 checkpoints)
+- Representation-search datasets
+- RepGraph datasets
+- Evaluation sets
+- Interactive demos and Spaces
+
+```
+WestQuantOpen / GitHub
+    ↓
+code, algorithms, WQIR, RepGraph, plugins, benchmark runners, reproducibility
+
+WestQuantStudio / Hugging Face
+    ↓
+WQT20, model checkpoints, training data, RepGraph datasets, eval datasets, Spaces
+```

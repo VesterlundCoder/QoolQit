@@ -67,10 +67,34 @@ Status: **Planned**. Not started.
 
 ### Hugging Face Organization
 
-A WestQuant Open Hugging Face organization for hosting models, datasets,
+A WestQuant Hugging Face organization for hosting models, datasets,
 and Spaces related to representation search.
 
-Status: **Planned**. Not started.
+**Namespace: `WestQuantStudio`** (active)
+
+Purpose:
+- WestQuant models
+- Representation-search datasets
+- RepGraph datasets
+- Evaluation sets
+- Interactive demos and Spaces
+
+Status: **Active**. Account confirmed and connected.
+
+### GitHub Organization
+
+**Namespace: `WestQuantOpen`** (planned)
+
+The permanent home for WestQuant Open source artifacts. Future repos:
+- `WestQuantOpen/representation-stack` (this artifact, migrated)
+- `WestQuantOpen/wqir`
+- `WestQuantOpen/repgraph`
+- `WestQuantOpen/transformation-registry`
+- `WestQuantOpen/westquant-qiskit`
+- `WestQuantOpen/wqt-training`
+- `WestQuantOpen/westquant-evals`
+
+Status: **Planned**. Not yet created.
 
 ### Zenodo DOI
 

@@ -5,7 +5,6 @@ type: software
 authors:
   - given-names: "David"
     family-names: "Vesterlund"
-    orcid: "https://orcid.org/0009-0000-0000-0000"
     affiliation: "WestQuant"
 repository-code: "https://github.com/VesterlundCoder/QoolQit"
 url: "https://github.com/VesterlundCoder/QoolQit"
@@ -25,16 +24,15 @@ keywords:
   - embedding
 license: Apache-2.0
 version: "1.1.0"
-date-released: "2025-01-01"
+date-released: "2026-09-24"
 preferred-citation:
   type: software
   title: "WestQuant Representation Stack for QoolQit"
   authors:
     - given-names: "David"
       family-names: "Vesterlund"
-      orcid: "https://orcid.org/0009-0000-0000-0000"
       affiliation: "WestQuant"
   repository-code: "https://github.com/VesterlundCoder/QoolQit"
   version: "1.1.0"
-  date-released: "2025-01-01"
+  date-released: "2026-09-24"
   url: "https://github.com/VesterlundCoder/QoolQit"
