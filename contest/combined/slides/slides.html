@@ -1,17 +1,28 @@
 <!DOCTYPE html>
 <html><head><meta charset="utf-8"><title>WestQuant Representation Stack (Combined)</title>
 <style>
-body { font-family: -apple-system, Helvetica, Arial, sans-serif; margin: 0; }
+body { font-family: -apple-system, Helvetica, Arial, sans-serif; margin: 0; background: #000e22; }
 .slide { width: 1280px; height: 720px; padding: 48px 64px; box-sizing: border-box;
-          page-break-after: always; position: relative; }
-.slide h1 { font-size: 32px; margin-bottom: 24px; color: #1a237e; }
-.slide h2 { font-size: 24px; color: #0d47a1; margin-top: 0; }
-.slide ul { font-size: 20px; line-height: 1.6; }
-.slide li { margin-bottom: 10px; }
-.footer { position: absolute; bottom: 24px; left: 64px; font-size: 14px; color: #666; }
+          page-break-after: always; position: relative; background: #000e22; color: #ffffff; }
+.slide h1 { font-size: 28px; margin-bottom: 24px; color: #ffffff; }
+.slide h2 { font-size: 22px; color: #7fb3ff; margin-top: 0; }
+.slide ul { font-size: 18px; line-height: 1.6; list-style: none; padding: 0; }
+.slide li { margin-bottom: 12px; color: #c8d8f0; }
+.slide li b { color: #ffffff; }
+.footer { position: absolute; bottom: 24px; left: 64px; font-size: 13px; color: #4a6a9a; }
+.footer-right { position: absolute; bottom: 24px; right: 64px; font-size: 13px; color: #4a6a9a; }
 </style></head><body>
-<div class="slide"><h1>WestQuant Representation Stack (Combined)</h1><h2>Slide 1 — Project Overview</h2><ul><li><b>Problem:</b> Quantum algorithm design typically performs one fixed translation from optimization problem to hardware. We argue representation itself should be searched.</li><li><b>Approach:</b> A composable pipeline: P -> H_i (Hamiltonian Explorer) -> R_ij (Representation Scheduler) -> Q_ijk (QoolQit compilation + emulation) -> Pareto selection. Both projects are independently useful and composable.</li><li><b>Results:</b> Flagship experiment (6 problems x 5 H x 9 R x 3 replicates = 810 observations): H×R interaction dominates (η² = 48.2%), embedding main effect η²(R) = 19.0%, Hamiltonian main effect η²(H) = 6.8%. For 5/6 problems, the preselected baseline fails terminal ground-state preservation; search finds feasible alternatives for 6/6. Representation search can rescue an otherwise invalid physical realization.</li><li><b>Importance:</b> The H×R interaction is the dominant effect, directly motivating joint representation search. Neither H alone nor R alone determines performance — it is their interaction that matters. QoolQit serves as the evaluation engine; WestQuant AI is optional. Fully open-source, deterministic, reproducible.</li></ul>
-<div class="footer">WestQuant Representation Stack — QoolQit 1.4.0</div></div>
-<div class="slide"><h1>WestQuant Representation Stack (Combined)</h1><h2>Slide 2 — QoolQit Experience</h2><ul><li><b>Positive aspects:</b> QoolQit provides a clean end-to-end stack: Register, Drive, QuantumProgram, compile_to(device), LocalEmulator. The embedding API (InteractionEmbedder, SpringLayoutEmbedder, Blade) covers the main approaches. DataGraph bridges logical and physical.</li><li><b>Challenges:</b> DMM requires AnalogDeviceWithDMM (not AnalogDevice). max_energy profile needed for auto-rescaling. Bitstring results are Counters of strings. Native Rydberg J>0 constrains which Hamiltonians are directly realizable.</li><li><b>Workflow:</b> Successive halving (cheap metrics -> emulation) is essential for search scalability. The five-class equivalence taxonomy ensures scientific rigor. Two-way ANOVA with H, R, H×R, and residual terms quantifies how each representation layer matters.</li></ul>
-<div class="footer">WestQuant Representation Stack — QoolQit 1.4.0</div></div>
+<div class="slide"><h1>WestQuant Representation Stack (Combined)</h1><h2>Slide 1 — Project Overview</h2><ul><li><b>Problem:</b> Quantum algorithm design typically performs one fixed translation from optimization problem to hardware. We argue representation itself should be searched.</li>
+<li><b>Approach:</b> A composable pipeline: P -> H_i (Hamiltonian Explorer) -> R_ij (Representation Scheduler) -> Q_ijk (QoolQit compilation + emulation) -> Pareto selection. Both projects are independently useful and composable.</li>
+<li><b>Results:</b> Flagship experiment (6 problems x 5 H x 9 R x 3 replicates = 810 observations): H×R interaction dominates (η² = 48.2%), embedding main effect η²(R) = 19.0%, Hamiltonian main effect η²(H) = 6.8%. For 5/6 problems, the preselected baseline fails terminal ground-state preservation; search finds feasible alternatives for 6/6. Representation search can rescue an otherwise invalid physical realization.</li>
+<li><b>Importance:</b> The H×R interaction is the dominant effect, directly motivating joint representation search. Neither H alone nor R alone determines performance — it is their interaction that matters. QoolQit serves as the evaluation engine; WestQuant AI is optional. Fully open-source, deterministic, reproducible.</li>
+</ul>
+<div class="footer">WestQuant Representation Stack — QoolQit 1.4.0</div>
+<div class="footer-right">WestQuant Open Artifact #001</div></div>
+<div class="slide"><h1>WestQuant Representation Stack (Combined)</h1><h2>Slide 2 — QoolQit Experience</h2><ul><li><b>Positive aspects:</b> QoolQit provides a clean end-to-end stack: Register, Drive, QuantumProgram, compile_to(device), LocalEmulator. The embedding API (InteractionEmbedder, SpringLayoutEmbedder, Blade) covers the main approaches. DataGraph bridges logical and physical.</li>
+<li><b>Challenges:</b> DMM requires AnalogDeviceWithDMM (not AnalogDevice). max_energy profile needed for auto-rescaling. Bitstring results are Counters of strings. Native Rydberg J>0 constrains which Hamiltonians are directly realizable.</li>
+<li><b>Workflow:</b> Successive halving (cheap metrics -> emulation) is essential for search scalability. The five-class equivalence taxonomy ensures scientific rigor. Two-way ANOVA with H, R, H×R, and residual terms quantifies how each representation layer matters.</li>
+</ul>
+<div class="footer">WestQuant Representation Stack — QoolQit 1.4.0</div>
+<div class="footer-right">WestQuant Open Artifact #001</div></div>
 </body></html>
