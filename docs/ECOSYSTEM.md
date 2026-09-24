@@ -95,13 +95,13 @@ release.
 
 | Platform | Namespace | Status | Purpose |
 |----------|-----------|--------|---------|
-| GitHub | `VesterlundCoder` (current), `WestQuantOpen` (planned) | Active | Source code, artifacts, CI |
+| GitHub | `WestQuantOpen` | Active | Source code, artifacts, CI |
 | Hugging Face | `WestQuantStudio` | Active | Models, datasets, Spaces |
 
-### GitHub organization: WestQuantOpen (planned)
+### GitHub organization: WestQuantOpen (active)
 
-The permanent home for WestQuant Open source artifacts. Future repos:
-- `WestQuantOpen/representation-stack` (this artifact, migrated)
+The permanent home for WestQuant Open source artifacts. First repo:
+- `WestQuantOpen/representation-stack` (this artifact, live)
 - `WestQuantOpen/wqir`
 - `WestQuantOpen/repgraph`
 - `WestQuantOpen/transformation-registry`

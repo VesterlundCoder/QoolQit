@@ -83,10 +83,12 @@ Status: **Active**. Account confirmed and connected.
 
 ### GitHub Organization
 
-**Namespace: `WestQuantOpen`** (planned)
+**Namespace: `WestQuantOpen`** (active)
 
-The permanent home for WestQuant Open source artifacts. Future repos:
-- `WestQuantOpen/representation-stack` (this artifact, migrated)
+The permanent home for WestQuant Open source artifacts. First repo:
+- `WestQuantOpen/representation-stack` (this artifact, live)
+
+Future repos:
 - `WestQuantOpen/wqir`
 - `WestQuantOpen/repgraph`
 - `WestQuantOpen/transformation-registry`
@@ -94,7 +96,7 @@ The permanent home for WestQuant Open source artifacts. Future repos:
 - `WestQuantOpen/wqt-training`
 - `WestQuantOpen/westquant-evals`
 
-Status: **Planned**. Not yet created.
+Status: **Active**. First repo created.
 
 ### Zenodo DOI
 

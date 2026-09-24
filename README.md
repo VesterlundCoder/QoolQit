@@ -93,7 +93,7 @@ through WQT20 (planned, see `docs/ECOSYSTEM.md` and `ROADMAP.md`).
 ## Quick start
 
 ```bash
-git clone https://github.com/VesterlundCoder/QoolQit.git
+git clone https://github.com/WestQuantOpen/representation-stack.git
 cd QoolQit
 git checkout qoolqit-contest-v1.1
 pip install -e ".[test]"       # installs westquant_qoolqit + deps (qoolqit>=1.4.0)

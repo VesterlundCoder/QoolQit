@@ -6,8 +6,8 @@ authors:
   - given-names: "David"
     family-names: "Vesterlund"
     affiliation: "WestQuant"
-repository-code: "https://github.com/VesterlundCoder/QoolQit"
-url: "https://github.com/VesterlundCoder/QoolQit"
+repository-code: "https://github.com/WestQuantOpen/representation-stack"
+url: "https://github.com/WestQuantOpen/representation-stack"
 abstract: >-
   The WestQuant Representation Stack searches both the Hamiltonian
   representation and the physical embedding of an optimization problem
@@ -32,7 +32,7 @@ preferred-citation:
     - given-names: "David"
       family-names: "Vesterlund"
       affiliation: "WestQuant"
-  repository-code: "https://github.com/VesterlundCoder/QoolQit"
+  repository-code: "https://github.com/WestQuantOpen/representation-stack"
   version: "1.1.0"
   date-released: "2026-09-24"
-  url: "https://github.com/VesterlundCoder/QoolQit"
+  url: "https://github.com/WestQuantOpen/representation-stack"
