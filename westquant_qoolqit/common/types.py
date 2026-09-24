@@ -57,13 +57,14 @@ class BinaryQuadraticHamiltonian:
 
     def energy(self, x: npt.NDArray[np.float64] | list[int]) -> float:
         """Evaluate E(x) for one or several bitstrings (each row a bitstring)."""
-        x = np.asarray(x, dtype=float)
+        x = np.asarray(x, dtype=np.float64)
         if x.ndim == 1:
             x = x[None, :]
         # pair term counted once: 0.5 x^T (J+J^T) x with J upper-tri => x^T J_sym x
         # but J_sym has both halves, so use 0.5
-        pair = 0.5 * np.einsum("bi,ij,bj->b", x, self.quadratic, x)
-        lin = x @ self.linear
+        with np.errstate(divide="ignore", over="ignore", invalid="ignore"):
+            pair = 0.5 * np.einsum("bi,ij,bj->b", x, self.quadratic, x)
+            lin = x @ self.linear
         return (pair + lin + self.constant).ravel()
 
     def energies_all(self) -> npt.NDArray[np.float64]:

@@ -45,14 +45,20 @@ that searches both layers simultaneously via a factorial experiment.
 ```bash
 git clone https://github.com/VesterlundCoder/QoolQit.git
 cd QoolQit
-pip install -e .                 # installs westquant_qoolqit + deps (qoolqit>=1.4.0)
+pip install -e ".[test]"       # installs westquant_qoolqit + deps (qoolqit>=1.4.0)
 
 # verify
-pytest tests/                    # 22 tests pass
+pytest tests/                    # 55 tests pass, 2 skipped
 python -c "import qoolqit; print('QoolQit', qoolqit.__version__)"
 
-# run the flagship benchmark (generates figures + manifest)
-python -m westquant_qoolqit.run_benchmarks
+# run the smoke benchmark (fast, ~10s)
+python -m westquant_qoolqit.run_benchmarks --mode smoke
+
+# run the flagship benchmark (official results, ~9 min)
+python -m westquant_qoolqit.run_benchmarks --mode flagship
+
+# validate the submission
+python -m westquant_qoolqit.validate_submission
 
 # open the combined notebook
 jupyter notebook notebooks/westquant_representation_stack_combined.ipynb
@@ -296,39 +302,63 @@ computational verification.
 
 ## Key results
 
-**Benchmark:** MWIS path graph, n=5, weights ~ Uniform(1, 5), seed=42
+**Flagship experiment:** 6 MWIS problems × 5 Hamiltonian representations × 9 embedding representations × 3 replicates = 810 cells, 1000 shots per emulation.
+
+Source: `results/runs/flagship_v1/processed/report_metrics.json`
 
 | Metric | Value |
 |--------|-------|
-| Hamiltonian representations generated & verified | 10 |
-| Exact transforms verified as `EXACT_EQUIVALENT` (max error) | < 1e-14 |
-| MWIS penalty candidates verified as `GROUND_STATE_EQUIVALENT` | 5 (all U > wmax) |
-| Factorial cells (H × R) | 9 |
-| Local QoolQit emulations | 9 (QutipBackendV2) |
-| **Variance from Hamiltonian choice (H)** | **~62%** |
-| **Variance from embedding choice (R)** | **~10%** |
-| Best solution probability | 11% |
-| Worst solution probability | 2% |
-| Best / worst ratio | >5× |
+| Problems | 6 (path, cycle, grid, geometric, Erdős-Rényi) |
+| Hamiltonian representations per problem | 5 (MWIS penalty, varying U) |
+| Embedding representations per problem | 9 (3 interaction + 3 spring + 3 blade) |
+| Replicates per cell | 3 |
+| Total factorial cells | 810 |
+| **η²(H) — Hamiltonian main effect** | **7.2%** (median) |
+| **η²(R) — Embedding main effect** | **33.1%** (median) |
+| **η²(H×R) — Interaction effect** | **47.7%** (median) |
+| **Median improvement over baseline** | **65.9%** |
+| **Fraction of problems improved** | **100%** (6/6) |
+| QoolQit version | 1.4.0 |
 
-**Finding:** Both representation layers contribute meaningfully. The
-Hamiltonian choice dominates for this instance, but the embedding still
-contributes a 5× spread in solution probability within a single Hamiltonian.
+**Finding:** The H×R interaction is the dominant or near-dominant effect in 4 of 6
+problems. This directly motivates joint representation search: neither the
+Hamiltonian alone nor the embedding alone determines performance — it is their
+*interaction* that matters. The embedding main effect is also substantial (33.1%),
+while the Hamiltonian main effect is small (7.2%), suggesting that within the MWIS
+penalty family, the choice of U matters less than the physical embedding.
+
+Per-problem breakdown (source: `results/runs/flagship_v1/processed/summary.json`):
+
+| Problem | η²(H) | η²(R) | η²(H×R) | Improvement |
+|---------|-------|-------|---------|-------------|
+| path_n5 | 8.3% | 35.4% | 54.3% | 5.1% |
+| path_n6 | 0.4% | 72.9% | 24.4% | 0.0% |
+| cycle_n6 | 6.0% | 32.8% | 59.4% | 51.5% |
+| grid_2x3 | 12.2% | 32.3% | 53.5% | 65.9% |
+| geometric_n6 | 5.2% | 28.2% | 21.2% | 141.2% |
+| erdos_n6 | 17.9% | 33.4% | 41.8% | 188.0% |
 
 ---
 
 ## Benchmarks & figures
 
-Run `python -m westquant_qoolqit.run_benchmarks` to regenerate:
+Run `python -m westquant_qoolqit.run_benchmarks --mode smoke` (fast, ~10s) or
+`python -m westquant_qoolqit.run_benchmarks --mode flagship` (official, ~9 min).
+
+Results are stored under `results/runs/<experiment_id>/`:
 
 | Output | Description |
 |--------|-------------|
-| `results/figures/factorial_heatmap.png` | H × R matrix of solution probabilities |
-| `results/figures/variance_decomposition.png` | Bar chart: H vs R variance fractions |
-| `results/figures/pareto_front.png` | Pareto scatter (interaction error vs solution probability) |
-| `results/raw/benchmark_cells.jsonl` | Per-cell records (JSONL) |
-| `results/processed/benchmark_summary.json` | Summary statistics |
-| `results/manifests/environment.json` | Software versions + seed |
+| `results/runs/flagship_v1/processed/report_metrics.json` | **Single source of truth** — aggregate metrics |
+| `results/runs/flagship_v1/processed/summary.json` | Per-problem statistics |
+| `results/runs/flagship_v1/raw/cells.jsonl` | Per-cell records (JSONL) |
+| `results/runs/flagship_v1/figures/factorial_heatmap.png` | H × R matrix of solution probabilities |
+| `results/runs/flagship_v1/figures/variance_decomposition.png` | Bar chart: H, R, H×R effect sizes |
+| `results/runs/flagship_v1/figures/baseline_comparison.png` | Search improvement over baseline |
+| `results/runs/flagship_v1/environment.json` | Software versions + seed |
+| `results/runs/flagship_v1/config.yaml` | Frozen experiment config |
+
+`results/latest.txt` points to the most recent experiment.
 
 **Benchmark problem generators** (`westquant_qoolqit.benchmarks`):
 - `synthetic_qubo(n, density, seed)` — random QUBO
@@ -372,8 +402,9 @@ Regenerate with: `python -m westquant_qoolqit.generate_pdf_slides`
 
 ## Test suite
 
-22 pytest tests covering algebra, equivalence, search, Pareto, robustness,
-and real QoolQit integration:
+57 pytest tests (55 passed, 2 skipped) covering algebra, equivalence, search,
+Pareto, robustness, real QoolQit integration, and submission-grade regression
+tests:
 
 ```bash
 pytest tests/ -v
@@ -384,16 +415,20 @@ pytest tests/ -v
 | `test_algebra.py` | 8 | QUBO round trips, pair counting, scaling, permutation, bit-complement, MWIS penalty |
 | `test_search.py` | 9 | Equivalence invalid detection, Pareto dominance/front, robustness, candidate grid reproducibility, realizability, explorer reproducibility, exhaustive verification |
 | `test_qoolqit.py` | 5 | QoolQit version, interaction embedder, DMM compilation, emulation bitstrings, MockDevice |
+| `test_regression.py` | 35 | Terminal drive, MWIS DMM, forward-map verification, embedder diversity, terminal encoding, two-way ANOVA, Wilson CI, degenerate equivalence, adversarial equivalence, scheduler embedders, reproducibility, declared vs verified, QUBO edge cases |
 
 ---
 
 ## Reproducibility
 
-Every experiment records:
-- Software versions (`results/manifests/environment.json`)
+See [`REPRODUCIBILITY.md`](REPRODUCIBILITY.md) for the full clean-room reproduction
+guide. Every experiment records:
+- Software versions (`results/runs/<id>/environment.json`)
 - Random seeds (passed to all generators and embedders)
-- Per-cell records (`results/raw/benchmark_cells.jsonl`)
+- Per-cell records (`results/runs/<id>/raw/cells.jsonl`)
 - The exact QoolQit version (`1.4.0`) stated in every notebook
+- Frozen experiment configs (`experiments/smoke_v1.yaml`, `experiments/flagship_v1.yaml`)
+- Pinned dependencies (`requirements-contest.txt`)
 
 ```python
 from westquant_qoolqit.common import capture_environment

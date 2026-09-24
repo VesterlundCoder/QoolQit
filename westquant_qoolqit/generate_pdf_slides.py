@@ -52,13 +52,13 @@ make_pdf(
     [
         "Problem: A fixed logical Hamiltonian does not determine a unique useful quantum representation. The physical embedding/layout matters.",
         "Approach: Automated search over QoolQit embeddings (InteractionEmbedder, SpringLayoutEmbedder, Blade) using successive halving across 5 stages: cheap metrics, logical fidelity, compilation, emulation, robustness.",
-        "Results: On a 5-node MWIS instance, different embeddings of the same Hamiltonian yield solution probabilities from 2% to 11%. The best embedding outperforms the default by >2x.",
+        "Results: Flagship experiment (6 problems, 9 embeddings, 3 replicates): embedding main effect η²(R) = 33.1% (median). Search improves over baseline in 100% of problems.",
         "Importance: Treating the embedding as an optimization variable (not a fixed choice) materially improves quantum solution quality. Open-source, deterministic, no proprietary infrastructure required.",
     ],
     "Slide 2 — QoolQit Experience",
     [
         "Positive: QoolQit's Register, Drive, QuantumProgram abstractions are clean and composable. The embedding API (InteractionEmbedder, Blade) is well-designed. compile_to(device) handles device constraints automatically. LocalEmulator with QutipBackendV2 works out of the box.",
-        "Challenges: DMM drives require AnalogDeviceWithDMM (not AnalogDevice). The max_energy profile is needed for automatic rescaling. Bitstring results come as Counters of strings, requiring careful bit-ordering handling.",
+        "Challenges: DMM drives require AnalogDeviceWithDMM (not AnalogDevice). The max_energy profile is needed for automatic rescaling. Bitstring results come as Counters of strings, requiring careful bit-ordering handling. InteractionEmbedder uses a fixed internal RNG seed when x0=None.",
         "Workflow: Successive halving (cheap metrics first, expensive emulation last) is essential for search scalability. QoolQit's interaction_matrix() and 1/r^6 convention made interaction-fidelity metrics straightforward.",
     ],
 )
@@ -70,14 +70,14 @@ make_pdf(
     [
         "Problem: A mathematical optimization problem does not determine a unique useful Hamiltonian representation. Penalty strength, variable encoding, and landscape all matter.",
         "Approach: Generate multiple valid representations (scaling, permutation, bit-complement, MWIS penalty family) and verify equivalence by exhaustive state-by-state comparison. Each is classified: EXACT_EQUIVALENT, GROUND_STATE_EQUIVALENT, SAME_PROBLEM_DIFFERENT_DYNAMICS, APPROXIMATE, or INVALID.",
-        "Results: For MWIS, penalty strengths U in [5.5, 8.9] all yield GROUND_STATE_EQUIVALENT Hamiltonians with the same optimum but different gaps (1.0 to 6.9). Bit-complement flips interaction signs, making a Hamiltonian non-native-Rydberg.",
-        "Importance: The Hamiltonian representation choice drives 62% of solution-probability variance in our factorial experiment, vs 10% from embedding. Representation itself is an optimization variable.",
+        "Results: For MWIS, penalty strengths U in [5.5, 22.2] all yield GROUND_STATE_EQUIVALENT Hamiltonians. The Hamiltonian main effect is η²(H) = 7.2% (median across 6 problems).",
+        "Importance: The Hamiltonian representation choice matters less than its interaction with the embedding. Representation itself is an optimization variable, but the H×R interaction (47.7%) is the dominant effect.",
     ],
     "Slide 2 — QoolQit Experience",
     [
         "Positive: QoolQit's DataGraph.from_matrix and interaction_matrix() made it easy to connect logical Hamiltonians to physical interactions. The 1/r^6 Rydberg convention is natural for QUBO/MWIS. Register.from_coordinates enables rapid coordinate experimentation.",
         "Challenges: Native Rydberg interactions are repulsive (J>0), so Hamiltonians with negative pair interactions (e.g., after bit-complement) are not directly native-realizable. The realizability classifier must flag this before expensive embedding. DMM is needed for MWIS node weights.",
-        "Workflow: The five-class equivalence taxonomy forced mathematical rigor. Exhaustive verification for n<=16 ensured no false equivalence claims. The realizability classifier prevents wasted computation on non-native Hamiltonians.",
+        "Workflow: The five-class equivalence taxonomy forced mathematical rigor. Exhaustive verification for n<=16 ensured no false equivalence claims. Forward-map ground-state verification was corrected to map argmin E through T.",
     ],
 )
 
@@ -88,14 +88,14 @@ make_pdf(
     [
         "Problem: Quantum algorithm design typically performs one fixed translation from optimization problem to hardware. We argue representation itself should be searched.",
         "Approach: A composable pipeline: P -> H_i (Hamiltonian Explorer) -> R_ij (Representation Scheduler) -> Q_ijk (QoolQit compilation + emulation) -> Pareto selection. Both projects are independently useful and composable.",
-        "Results: Factorial experiment (3 Hamiltonians x 3 embeddings = 9 cells) on MWIS: Hamiltonian choice drives 62% of variance, embedding 10%. The best (H, R) combination outperforms the worst by >2x in solution probability.",
-        "Importance: Representation can be treated as an optimization variable. QoolQit serves as the evaluation engine; WestQuant AI is optional. Fully open-source, deterministic, reproducible.",
+        "Results: Flagship experiment (6 problems x 5 H x 9 R x 3 replicates = 810 cells): H×R interaction dominates (η² = 47.7%), embedding main effect η²(R) = 33.1%, Hamiltonian main effect η²(H) = 7.2%. Search improves over baseline in 100% of problems (median improvement: 65.9%).",
+        "Importance: The H×R interaction is the dominant effect, directly motivating joint representation search. Neither H alone nor R alone determines performance — it is their interaction that matters. QoolQit serves as the evaluation engine; WestQuant AI is optional. Fully open-source, deterministic, reproducible.",
     ],
     "Slide 2 — QoolQit Experience",
     [
         "Positive: QoolQit provides a clean end-to-end stack: Register, Drive, QuantumProgram, compile_to(device), LocalEmulator. The embedding API (InteractionEmbedder, SpringLayoutEmbedder, Blade) covers the main approaches. DataGraph bridges logical and physical.",
-        "Challenges: DMM requires AnalogDeviceWithDMM (not AnalogDevice). max_energy profile needed for auto-rescaling. Bitstring results are Counters of strings. Native Rydberg J>0 constrains which Hamiltonians are directly realizable.",
-        "Workflow: Successive halving (cheap metrics -> emulation) is essential for search scalability. The five-class equivalence taxonomy ensures scientific rigor. Variance decomposition quantifies how much each representation layer matters.",
+        "Challenges: DMM requires AnalogDeviceWithDMM (not AnalogDevice). max_energy profile needed for auto-rescaling. Bitstring results are Counters of strings. Native Rydberg J>0 constrains which Hamiltonians are directly realizable. InteractionEmbedder x0=None uses a fixed internal seed.",
+        "Workflow: Successive halving (cheap metrics -> emulation) is essential for search scalability. The five-class equivalence taxonomy ensures scientific rigor. Two-way ANOVA with H, R, H×R, and residual terms quantifies how each representation layer matters.",
     ],
 )
 

@@ -1,0 +1,382 @@
+[
+  {
+    "problem_id": "path_n5_seed42",
+    "n_cells": 135,
+    "hamiltonian_ids": [
+      "H_mwis_U5.543",
+      "H_mwis_U6.652",
+      "H_mwis_U8.869",
+      "H_mwis_U13.303",
+      "H_mwis_U22.172"
+    ],
+    "embedder_ids": [
+      "R_int_s42_r0",
+      "R_int_s43_r1",
+      "R_int_s44_r2",
+      "R_spr_s45_it50",
+      "R_spr_s46_it200",
+      "R_spr_s47_it500",
+      "R_bld_s48_d4",
+      "R_bld_s49_d2",
+      "R_bld_s50_d3"
+    ],
+    "embedder_families": [
+      "interaction",
+      "interaction",
+      "interaction",
+      "spring",
+      "spring",
+      "spring",
+      "blade",
+      "blade",
+      "blade"
+    ],
+    "variance_decomposition": {
+      "ss_H": 0.048077037037037064,
+      "ss_R": 0.20458026666666673,
+      "ss_HxR": 0.31378069629629635,
+      "ss_residual": 0.011334666666666663,
+      "ss_total": 0.5777726666666667,
+      "eta2_H": 0.08321099250749786,
+      "eta2_R": 0.35408436305398094,
+      "eta2_HxR": 0.5430867785881696,
+      "eta2_residual": 0.019617865850351746,
+      "df_H": 4,
+      "df_R": 8,
+      "df_HxR": 32,
+      "df_residual": 90,
+      "n_cells": 45,
+      "n_replicates": 3
+    },
+    "best_cell": {
+      "hamiltonian_id": "H_mwis_U5.543",
+      "embedder": "R_int_s44_r2",
+      "p_opt": 0.249
+    },
+    "baseline_cell": {
+      "hamiltonian_id": "H_mwis_U5.543",
+      "embedder": "R_int_s42_r0",
+      "p_opt": 0.237
+    },
+    "improvement": {
+      "absolute": 0.01200000000000001,
+      "relative": 0.05063291139240511
+    }
+  },
+  {
+    "problem_id": "path_n6_seed1",
+    "n_cells": 135,
+    "hamiltonian_ids": [
+      "H_mwis_U6.002",
+      "H_mwis_U7.203",
+      "H_mwis_U9.604",
+      "H_mwis_U14.406",
+      "H_mwis_U24.009"
+    ],
+    "embedder_ids": [
+      "R_int_s42_r0",
+      "R_int_s43_r1",
+      "R_int_s44_r2",
+      "R_spr_s45_it50",
+      "R_spr_s46_it200",
+      "R_spr_s47_it500",
+      "R_bld_s48_d4",
+      "R_bld_s49_d2",
+      "R_bld_s50_d3"
+    ],
+    "embedder_families": [
+      "interaction",
+      "interaction",
+      "interaction",
+      "spring",
+      "spring",
+      "spring",
+      "blade",
+      "blade",
+      "blade"
+    ],
+    "variance_decomposition": {
+      "ss_H": 0.0006773303580588881,
+      "ss_R": 0.12470247765466295,
+      "ss_HxR": 0.04179988496973428,
+      "ss_residual": 0.003945333333333333,
+      "ss_total": 0.17112502631578946,
+      "eta2_H": 0.003958102287207022,
+      "eta2_R": 0.7287214520250265,
+      "eta2_HxR": 0.2442651777455269,
+      "eta2_residual": 0.023055267942239624,
+      "df_H": 4,
+      "df_R": 8,
+      "df_HxR": 32,
+      "df_residual": 90,
+      "n_cells": 45,
+      "n_replicates": 3
+    },
+    "best_cell": {
+      "hamiltonian_id": "H_mwis_U7.203",
+      "embedder": "R_bld_s50_d3",
+      "p_opt": 0.121
+    },
+    "baseline_cell": {
+      "hamiltonian_id": "H_mwis_U6.002",
+      "embedder": "R_int_s42_r0",
+      "p_opt": null
+    }
+  },
+  {
+    "problem_id": "cycle_n6_seed42",
+    "n_cells": 135,
+    "hamiltonian_ids": [
+      "H_mwis_U6.128",
+      "H_mwis_U7.354",
+      "H_mwis_U9.805",
+      "H_mwis_U14.707",
+      "H_mwis_U24.512"
+    ],
+    "embedder_ids": [
+      "R_int_s42_r0",
+      "R_int_s43_r1",
+      "R_int_s44_r2",
+      "R_spr_s45_it50",
+      "R_spr_s46_it200",
+      "R_spr_s47_it500",
+      "R_bld_s48_d4",
+      "R_bld_s49_d2",
+      "R_bld_s50_d3"
+    ],
+    "embedder_families": [
+      "interaction",
+      "interaction",
+      "interaction",
+      "spring",
+      "spring",
+      "spring",
+      "blade",
+      "blade",
+      "blade"
+    ],
+    "variance_decomposition": {
+      "ss_H": 0.02049747463093164,
+      "ss_R": 0.11160563879574548,
+      "ss_HxR": 0.20175342920898182,
+      "ss_residual": 0.006068666666666667,
+      "ss_total": 0.3399252093023256,
+      "eta2_H": 0.0602999544311567,
+      "eta2_R": 0.32832410113038923,
+      "eta2_HxR": 0.5935229976707748,
+      "eta2_residual": 0.01785294676767931,
+      "df_H": 4,
+      "df_R": 8,
+      "df_HxR": 32,
+      "df_residual": 90,
+      "n_cells": 45,
+      "n_replicates": 3
+    },
+    "best_cell": {
+      "hamiltonian_id": "H_mwis_U6.128",
+      "embedder": "R_bld_s48_d4",
+      "p_opt": 0.197
+    },
+    "baseline_cell": {
+      "hamiltonian_id": "H_mwis_U6.128",
+      "embedder": "R_int_s42_r0",
+      "p_opt": 0.13
+    },
+    "improvement": {
+      "absolute": 0.067,
+      "relative": 0.5153846153846154
+    }
+  },
+  {
+    "problem_id": "grid_2x3_seed42",
+    "n_cells": 135,
+    "hamiltonian_ids": [
+      "H_mwis_U6.128",
+      "H_mwis_U7.354",
+      "H_mwis_U9.805",
+      "H_mwis_U14.707",
+      "H_mwis_U24.512"
+    ],
+    "embedder_ids": [
+      "R_int_s42_r0",
+      "R_int_s43_r1",
+      "R_int_s44_r2",
+      "R_spr_s45_it50",
+      "R_spr_s46_it200",
+      "R_spr_s47_it500",
+      "R_bld_s48_d4",
+      "R_bld_s49_d2",
+      "R_bld_s50_d3"
+    ],
+    "embedder_families": [
+      "interaction",
+      "interaction",
+      "interaction",
+      "spring",
+      "spring",
+      "spring",
+      "blade",
+      "blade",
+      "blade"
+    ],
+    "variance_decomposition": {
+      "ss_H": 0.03156031504438323,
+      "ss_R": 0.08335367217630858,
+      "ss_HxR": 0.13789906580961128,
+      "ss_residual": 0.005048666666666667,
+      "ss_total": 0.25786171969696964,
+      "eta2_H": 0.1223924011732794,
+      "eta2_R": 0.3232495008342572,
+      "eta2_HxR": 0.5347791287968823,
+      "eta2_residual": 0.019578969195581605,
+      "df_H": 4,
+      "df_R": 8,
+      "df_HxR": 32,
+      "df_residual": 90,
+      "n_cells": 45,
+      "n_replicates": 3
+    },
+    "best_cell": {
+      "hamiltonian_id": "H_mwis_U9.805",
+      "embedder": "R_spr_s46_it200",
+      "p_opt": 0.151
+    },
+    "baseline_cell": {
+      "hamiltonian_id": "H_mwis_U6.128",
+      "embedder": "R_int_s42_r0",
+      "p_opt": 0.091
+    },
+    "improvement": {
+      "absolute": 0.06,
+      "relative": 0.6593406593406593
+    }
+  },
+  {
+    "problem_id": "geometric_n6_seed1",
+    "n_cells": 135,
+    "hamiltonian_ids": [
+      "H_mwis_U5.192",
+      "H_mwis_U6.231",
+      "H_mwis_U8.307",
+      "H_mwis_U12.461",
+      "H_mwis_U20.769"
+    ],
+    "embedder_ids": [
+      "R_int_s42_r0",
+      "R_int_s43_r1",
+      "R_int_s44_r2",
+      "R_spr_s45_it50",
+      "R_spr_s46_it200",
+      "R_spr_s47_it500",
+      "R_bld_s48_d4",
+      "R_bld_s49_d2",
+      "R_bld_s50_d3"
+    ],
+    "embedder_families": [
+      "interaction",
+      "interaction",
+      "interaction",
+      "spring",
+      "spring",
+      "spring",
+      "blade",
+      "blade",
+      "blade"
+    ],
+    "variance_decomposition": {
+      "ss_H": 0.010294325662941044,
+      "ss_R": 0.05583710848126231,
+      "ss_HxR": 0.041985129958360734,
+      "ss_residual": 0.08983666666666668,
+      "ss_total": 0.1979532307692308,
+      "eta2_H": 0.0520038274845937,
+      "eta2_R": 0.28207222617324135,
+      "eta2_HxR": 0.21209620977242855,
+      "eta2_residual": 0.45382773656973624,
+      "df_H": 4,
+      "df_R": 8,
+      "df_HxR": 32,
+      "df_residual": 90,
+      "n_cells": 45,
+      "n_replicates": 3
+    },
+    "best_cell": {
+      "hamiltonian_id": "H_mwis_U20.769",
+      "embedder": "R_bld_s50_d3",
+      "p_opt": 0.123
+    },
+    "baseline_cell": {
+      "hamiltonian_id": "H_mwis_U5.192",
+      "embedder": "R_int_s42_r0",
+      "p_opt": 0.051
+    },
+    "improvement": {
+      "absolute": 0.07200000000000001,
+      "relative": 1.4117647058823533
+    }
+  },
+  {
+    "problem_id": "erdos_n6_seed2",
+    "n_cells": 135,
+    "hamiltonian_ids": [
+      "H_mwis_U6.087",
+      "H_mwis_U7.305",
+      "H_mwis_U9.739",
+      "H_mwis_U14.609",
+      "H_mwis_U24.349"
+    ],
+    "embedder_ids": [
+      "R_int_s42_r0",
+      "R_int_s43_r1",
+      "R_int_s44_r2",
+      "R_spr_s45_it50",
+      "R_spr_s46_it200",
+      "R_spr_s47_it500",
+      "R_bld_s48_d4",
+      "R_bld_s49_d2",
+      "R_bld_s50_d3"
+    ],
+    "embedder_families": [
+      "interaction",
+      "interaction",
+      "interaction",
+      "spring",
+      "spring",
+      "spring",
+      "blade",
+      "blade",
+      "blade"
+    ],
+    "variance_decomposition": {
+      "ss_H": 0.003737191735953642,
+      "ss_R": 0.006990858352229783,
+      "ss_HxR": 0.008759441975308643,
+      "ss_residual": 0.0014466666666666668,
+      "ss_total": 0.02093415873015873,
+      "eta2_H": 0.17852122858749842,
+      "eta2_R": 0.33394503415885657,
+      "eta2_HxR": 0.41842818181603736,
+      "eta2_residual": 0.06910555543760787,
+      "df_H": 4,
+      "df_R": 8,
+      "df_HxR": 32,
+      "df_residual": 90,
+      "n_cells": 45,
+      "n_replicates": 3
+    },
+    "best_cell": {
+      "hamiltonian_id": "H_mwis_U14.609",
+      "embedder": "R_int_s43_r1",
+      "p_opt": 0.072
+    },
+    "baseline_cell": {
+      "hamiltonian_id": "H_mwis_U6.087",
+      "embedder": "R_int_s42_r0",
+      "p_opt": 0.025
+    },
+    "improvement": {
+      "absolute": 0.04699999999999999,
+      "relative": 1.8799999999999997
+    }
+  }
+]

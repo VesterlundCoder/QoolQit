@@ -1,0 +1,15 @@
+{
+  "experiment_id": "flagship_v1",
+  "n_problems": 6,
+  "n_hamiltonian_representations": 5,
+  "n_embedding_representations": 9,
+  "n_cells_total": 810,
+  "n_replicates": 3,
+  "eta2_H_median": 0.07175547346932729,
+  "eta2_R_median": 0.3311345676446229,
+  "eta2_HxR_median": 0.4766036553064598,
+  "median_improvement": 0.6593406593406593,
+  "fraction_improved": 1.0,
+  "elapsed_seconds": 540.4332299232483,
+  "qoolqit_version": "1.4.0"
+}
