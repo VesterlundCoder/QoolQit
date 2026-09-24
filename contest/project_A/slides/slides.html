@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>WestQuant Representation Scheduler (Project A)</title>
+<style>
+body { font-family: -apple-system, Helvetica, Arial, sans-serif; margin: 0; }
+.slide { width: 1280px; height: 720px; padding: 48px 64px; box-sizing: border-box;
+          page-break-after: always; position: relative; }
+.slide h1 { font-size: 32px; margin-bottom: 24px; color: #1a237e; }
+.slide h2 { font-size: 24px; color: #0d47a1; margin-top: 0; }
+.slide ul { font-size: 20px; line-height: 1.6; }
+.slide li { margin-bottom: 10px; }
+.footer { position: absolute; bottom: 24px; left: 64px; font-size: 14px; color: #666; }
+</style></head><body>
+<div class="slide"><h1>WestQuant Representation Scheduler (Project A)</h1><h2>Slide 1 — Project Overview</h2><ul><li><b>Problem:</b> A fixed logical Hamiltonian does not determine a unique useful quantum representation. The physical embedding/layout matters.</li><li><b>Approach:</b> Automated search over QoolQit embeddings (InteractionEmbedder, SpringLayoutEmbedder, Blade) using successive halving across 5 stages: cheap metrics, logical fidelity, compilation, emulation, robustness.</li><li><b>Results:</b> On a 5-node MWIS instance, different embeddings of the same Hamiltonian yield solution probabilities ranging from 2% to 11%. The best embedding outperforms the default by >2x.</li><li><b>Importance:</b> Treating the embedding as an optimization variable (not a fixed choice) materially improves quantum solution quality. Open-source, deterministic, no proprietary infrastructure required.</li></ul>
+<div class="footer">WestQuant Representation Stack — QoolQit 1.4.0</div></div>
+<div class="slide"><h1>WestQuant Representation Scheduler (Project A)</h1><h2>Slide 2 — QoolQit Experience</h2><ul><li><b>Positive aspects:</b> QoolQit's Register, Drive, and QuantumProgram abstractions are clean and composable. The embedding API (InteractionEmbedder, Blade) is well-designed. compile_to(device) handles device constraints automatically. LocalEmulator with QutipBackendV2 works out of the box.</li><li><b>Challenges:</b> DMM drives require a DMM-capable device (AnalogDeviceWithDMM, not AnalogDevice). The max_energy compilation profile is needed for automatic rescaling; the default profile requires pre-scaled drives. Bitstring results come as Counters of strings (not arrays), requiring careful bit-ordering handling.</li><li><b>Workflow:</b> The successive-halving approach (cheap metrics first, expensive emulation last) is essential for scaling the search. QoolQit's interaction_matrix() and 1/r^6 convention made interaction-fidelity metrics straightforward.</li></ul>
+<div class="footer">WestQuant Representation Stack — QoolQit 1.4.0</div></div>
+</body></html>

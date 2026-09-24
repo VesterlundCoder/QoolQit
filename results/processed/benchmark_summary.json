@@ -1,0 +1,24 @@
+{
+  "problem": "MWIS path n=4",
+  "n_cells": 9,
+  "hamiltonian_ids": [
+    "H_mwis_U5.543",
+    "H_mwis_U6.652",
+    "H_mwis_U8.869"
+  ],
+  "variance_decomposition_p_opt": {
+    "H_variance": 0.00014135802469135794,
+    "R_variance": 8.209876543209875e-05,
+    "total_variance": 0.00037283950617283945,
+    "frac_H": 0.37913907284768195,
+    "frac_R": 0.22019867549668873
+  },
+  "variance_decomposition_frob": {
+    "H_variance": 2.174194351280903e-32,
+    "R_variance": 0.0,
+    "total_variance": 2.174194351280903e-32,
+    "frac_H": 1.0,
+    "frac_R": 0.0
+  },
+  "best_cell_p_opt": "H_mwis_U8.869"
+}

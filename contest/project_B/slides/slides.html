@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>WestQuant Hamiltonian Representation Explorer (Project B)</title>
+<style>
+body { font-family: -apple-system, Helvetica, Arial, sans-serif; margin: 0; }
+.slide { width: 1280px; height: 720px; padding: 48px 64px; box-sizing: border-box;
+          page-break-after: always; position: relative; }
+.slide h1 { font-size: 32px; margin-bottom: 24px; color: #1a237e; }
+.slide h2 { font-size: 24px; color: #0d47a1; margin-top: 0; }
+.slide ul { font-size: 20px; line-height: 1.6; }
+.slide li { margin-bottom: 10px; }
+.footer { position: absolute; bottom: 24px; left: 64px; font-size: 14px; color: #666; }
+</style></head><body>
+<div class="slide"><h1>WestQuant Hamiltonian Representation Explorer (Project B)</h1><h2>Slide 1 — Project Overview</h2><ul><li><b>Problem:</b> A mathematical optimization problem does not determine a unique useful Hamiltonian representation. The penalty strength, variable encoding, and landscape all matter.</li><li><b>Approach:</b> Generate multiple mathematically valid Hamiltonian representations (scaling, permutation, bit-complement, MWIS penalty family) and verify equivalence by exhaustive state-by-state comparison. Each is classified: EXACT_EQUIVALENT, GROUND_STATE_EQUIVALENT, SAME_PROBLEM_DIFFERENT_DYNAMICS, APPROXIMATE, or INVALID.</li><li><b>Results:</b> For MWIS, penalty strengths U in [5.5, 8.9] all yield GROUND_STATE_EQUIVALENT Hamiltonians with the same optimum but different gaps (1.0 to 6.9) and degeneracies. Bit-complement flips interaction signs, making a Hamiltonian non-native-Rydberg.</li><li><b>Importance:</b> The Hamiltonian representation choice drives 62% of solution-probability variance in our factorial experiment, vs 10% from embedding. Representation itself is an optimization variable.</li></ul>
+<div class="footer">WestQuant Representation Stack — QoolQit 1.4.0</div></div>
+<div class="slide"><h1>WestQuant Hamiltonian Representation Explorer (Project B)</h1><h2>Slide 2 — QoolQit Experience</h2><ul><li><b>Positive aspects:</b> QoolQit's DataGraph.from_matrix and interaction_matrix() made it easy to connect logical Hamiltonians to physical interactions. The 1/r^6 Rydberg convention is natural for QUBO/MWIS. Register.from_coordinates enables rapid coordinate experimentation.</li><li><b>Challenges:</b> Native Rydberg interactions are repulsive (J>0), so Hamiltonians with negative pair interactions (e.g., after bit-complement) are not directly native-realizable. The physical realizability classifier must flag this before expensive embedding. DMM is needed for MWIS node weights.</li><li><b>Workflow:</b> The five-class equivalence taxonomy forced mathematical rigor. Exhaustive verification for n<=16 ensured no false equivalence claims. The realizability classifier prevents wasted computation on non-native Hamiltonians.</li></ul>
+<div class="footer">WestQuant Representation Stack — QoolQit 1.4.0</div></div>
+</body></html>

@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>WestQuant Representation Stack (Combined)</title>
+<style>
+body { font-family: -apple-system, Helvetica, Arial, sans-serif; margin: 0; }
+.slide { width: 1280px; height: 720px; padding: 48px 64px; box-sizing: border-box;
+          page-break-after: always; position: relative; }
+.slide h1 { font-size: 32px; margin-bottom: 24px; color: #1a237e; }
+.slide h2 { font-size: 24px; color: #0d47a1; margin-top: 0; }
+.slide ul { font-size: 20px; line-height: 1.6; }
+.slide li { margin-bottom: 10px; }
+.footer { position: absolute; bottom: 24px; left: 64px; font-size: 14px; color: #666; }
+</style></head><body>
+<div class="slide"><h1>WestQuant Representation Stack (Combined)</h1><h2>Slide 1 — Project Overview</h2><ul><li><b>Problem:</b> Quantum algorithm design typically performs one fixed translation from optimization problem to hardware. We argue representation itself should be searched.</li><li><b>Approach:</b> A composable pipeline: P -> H_i (Hamiltonian Explorer) -> R_ij (Representation Scheduler) -> Q_ijk (QoolQit compilation + emulation) -> Pareto selection. Both projects are independently useful and composable.</li><li><b>Results:</b> Factorial experiment (3 Hamiltonians x 3 embeddings = 9 cells) on MWIS: Hamiltonian choice drives 62% of variance, embedding 10%. The best (H, R) combination outperforms the worst by >2x in solution probability.</li><li><b>Importance:</b> Representation can be treated as an optimization variable. QoolQit serves as the evaluation engine; WestQuant AI is optional. Fully open-source, deterministic, reproducible.</li></ul>
+<div class="footer">WestQuant Representation Stack — QoolQit 1.4.0</div></div>
+<div class="slide"><h1>WestQuant Representation Stack (Combined)</h1><h2>Slide 2 — QoolQit Experience</h2><ul><li><b>Positive aspects:</b> QoolQit provides a clean end-to-end stack: Register, Drive, QuantumProgram, compile_to(device), LocalEmulator. The embedding API (InteractionEmbedder, SpringLayoutEmbedder, Blade) covers the main approaches. DataGraph bridges logical and physical.</li><li><b>Challenges:</b> DMM requires AnalogDeviceWithDMM (not AnalogDevice). max_energy profile needed for auto-rescaling. Bitstring results are Counters of strings. Native Rydberg J>0 constrains which Hamiltonians are directly realizable.</li><li><b>Workflow:</b> Successive halving (cheap metrics -> emulation) is essential for search scalability. The five-class equivalence taxonomy ensures scientific rigor. Variance decomposition quantifies how much each representation layer matters.</li></ul>
+<div class="footer">WestQuant Representation Stack — QoolQit 1.4.0</div></div>
+</body></html>
