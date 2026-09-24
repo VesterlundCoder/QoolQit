@@ -37,7 +37,10 @@ class CandidateScore:
     expected_objective: float | None = None
     best_sampled_objective: float | None = None
     approximation_ratio: float | None = None
-    robust_mean_p_opt: float | None = None
+    robust_interaction_rank_mean: float | None = None
+    robust_interaction_rank_std: float | None = None
+    robust_interaction_rank_q05: float | None = None
+    robust_mean_p_opt: float | None = None  # actual p_opt under perturbation (if computed)
     robust_std_p_opt: float | None = None
     robust_q05_p_opt: float | None = None
     robustness_drop: float | None = None
@@ -56,7 +59,7 @@ class CandidateScore:
             "duration": self.duration,
             "min_spacing_margin": self.min_spacing_margin,
             "ground_state_probability": self.ground_state_probability,
-            "robust_mean_p_opt": self.robust_mean_p_opt,
+            "robust_mean_p_opt": self.robust_mean_p_opt if self.robust_mean_p_opt is not None else self.robust_interaction_rank_mean,
         }
         return np.array([m.get(n, 0.0) if m.get(n) is not None else 0.0 for n in names])
 

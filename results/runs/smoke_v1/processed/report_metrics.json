@@ -1,0 +1,15 @@
+{
+  "experiment_id": "smoke_v1",
+  "n_problems": 1,
+  "n_hamiltonian_representations": 3,
+  "n_embedding_representations": 3,
+  "n_cells_total": 9,
+  "n_replicates": 1,
+  "eta2_H_median": 0.14561940135459894,
+  "eta2_R_median": 0.21837448110115798,
+  "eta2_HxR_median": 0.6360061175442427,
+  "median_improvement": 0.0,
+  "fraction_improved": 0.0,
+  "elapsed_seconds": 8.491353034973145,
+  "qoolqit_version": "1.4.0"
+}

@@ -1,0 +1,14 @@
+# Contest-pinned dependencies — exact versions used for official results
+# Install: pip install -r requirements-contest.txt
+
+qoolqit==1.4.0
+pulser==1.9.1
+numpy==2.2.6
+scipy==1.15.3
+networkx==3.4.2
+matplotlib==3.10.9
+qutip==5.2.3
+pyyaml>=6.0
+pytest>=7.0
+nbformat>=5.0
+nbconvert>=7.0

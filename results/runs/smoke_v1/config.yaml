@@ -1,0 +1,36 @@
+baseline:
+  embedding: first
+  hamiltonian: first
+  schedule: linear
+control:
+  amp_max: 1.5
+  det_max: 5.0
+  duration: 4.0
+  schedule: linear
+embedding:
+  families:
+  - interaction
+  - spring
+  - blade
+  n_per_family: 1
+execution:
+  device: AnalogDeviceWithDMM
+  n_replicates: 1
+  num_shots: 200
+  profile: max_energy
+experiment_id: smoke_v1
+hamiltonian:
+  n_representations: 3
+  transform: mwis_penalty
+problems:
+- id: path_n5_seed42
+  n: 5
+  seed: 42
+  type: mwis_path
+qoolqit_version: 1.4.0
+robustness:
+  enabled: false
+  samples: 0
+  sigma: 0.02
+seeds:
+  base: 42

@@ -1,0 +1,32 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.10.12, pytest-9.0.3, pluggy-1.6.0 -- /Users/davidvesterlund/.pyenv/versions/3.10.12/bin/python
+cachedir: .pytest_cache
+rootdir: /Users/davidvesterlund/freedomcode/freedomcode/stringtheory/qla_studio_v0.2/qla_representation_lab/westquant_qoolqit
+configfile: pyproject.toml
+plugins: anyio-4.13.0
+collecting ... collected 22 items
+
+tests/test_algebra.py::test_qubo_round_trip PASSED                       [  4%]
+tests/test_algebra.py::test_qubo_energy_consistency PASSED               [  9%]
+tests/test_algebra.py::test_pair_counted_once PASSED                     [ 13%]
+tests/test_algebra.py::test_scaling_exact_equivalent PASSED              [ 18%]
+tests/test_algebra.py::test_permutation_exact_equivalent PASSED          [ 22%]
+tests/test_algebra.py::test_bit_complement_exact_equivalent PASSED       [ 27%]
+tests/test_algebra.py::test_constant_shift PASSED                        [ 31%]
+tests/test_algebra.py::test_mwis_penalty_ground_state_equivalent PASSED  [ 36%]
+tests/test_qoolqit.py::test_qoolqit_version_recorded PASSED              [ 40%]
+tests/test_qoolqit.py::test_interaction_embedder_runs PASSED             [ 45%]
+tests/test_qoolqit.py::test_compile_to_dmm_device PASSED                 [ 50%]
+tests/test_qoolqit.py::test_emulation_returns_bitstrings PASSED          [ 54%]
+tests/test_qoolqit.py::test_mock_device_compiles PASSED                  [ 59%]
+tests/test_search.py::test_equivalence_invalid PASSED                    [ 63%]
+tests/test_search.py::test_pareto_dominance PASSED                       [ 68%]
+tests/test_search.py::test_pareto_front PASSED                           [ 72%]
+tests/test_search.py::test_pareto_with_maximize PASSED                   [ 77%]
+tests/test_search.py::test_robustness_perturbation PASSED                [ 81%]
+tests/test_search.py::test_candidate_grid_reproducible PASSED            [ 86%]
+tests/test_search.py::test_realizability_classifier PASSED               [ 90%]
+tests/test_search.py::test_explorer_reproducible PASSED                  [ 95%]
+tests/test_search.py::test_exhaustive_verification PASSED                [100%]
+
+============================== 22 passed in 3.87s ==============================

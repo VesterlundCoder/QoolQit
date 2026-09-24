@@ -56,10 +56,10 @@ class RepresentationScheduler:
         self.seed = seed
         self.objectives = objectives or [
             "frobenius_error", "compilation_success", "duration",
-            "ground_state_probability", "robust_mean_p_opt",
+            "ground_state_probability", "robust_interaction_rank_mean",
         ]
         self.strategy = strategy
-        self.proposer = proposer or GridProposer(seed=seed)
+        self.proposer = proposer or GridProposer(seed=seed, embedders=self.embedders)
         self.num_shots = num_shots
         self.device = device
         self.halving = halving or HalvingConfig()
@@ -182,14 +182,16 @@ class RepresentationScheduler:
                     rc = interaction_rank_correlation(s.embedding.target_matrix, realized)
                     p_opts.append(rc)
                 stats = robustness_stats(p_opts)
-                s.robust_mean_p_opt = stats["mean"]
-                s.robust_std_p_opt = stats["std"]
-                s.robust_q05_p_opt = stats["q05"]
+                # These are rank correlations, NOT solution probabilities
+                s.robust_interaction_rank_mean = stats["mean"]
+                s.robust_interaction_rank_std = stats["std"]
+                s.robust_interaction_rank_q05 = stats["q05"]
                 nominal = (s.rank_correlation if s.rank_correlation is not None else 0.0)
                 s.robustness_drop = robustness_drop(nominal, stats["mean"])
 
         maximize = [n in {"ground_state_probability", "rank_correlation",
-                          "edge_preservation", "robust_mean_p_opt", "min_spacing_margin",
+                          "edge_preservation", "robust_interaction_rank_mean",
+                          "robust_mean_p_opt", "min_spacing_margin",
                           "approximation_ratio"} for n in self.objectives]
         return SchedulerResult(
             scores=scores, problem=problem, objective_names=self.objectives,

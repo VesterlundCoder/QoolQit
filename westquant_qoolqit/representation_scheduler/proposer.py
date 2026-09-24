@@ -12,7 +12,7 @@ from abc import ABC, abstractmethod
 import numpy as np
 
 from .candidates import RepresentationCandidate
-from .embedders import candidate_grid
+from .embedders import candidate_grid, candidate_grid_stratified
 
 
 class RepresentationProposer(ABC):
@@ -24,33 +24,46 @@ class RepresentationProposer(ABC):
 
 
 class RandomProposer(RepresentationProposer):
-    def __init__(self, seed: int = 0) -> None:
+    def __init__(self, seed: int = 0, embedders: list[str] | None = None) -> None:
         self.seed = seed
+        self.embedders = embedders or ["interaction", "spring", "blade"]
 
     def propose(self, problem, history, n_candidates: int, budget: int) -> list[RepresentationCandidate]:
         rng = np.random.default_rng(self.seed)
         seeds = rng.integers(0, 10_000, size=max(n_candidates, 3)).tolist()
-        return candidate_grid(embedders=["interaction", "spring", "blade"],
-                               seeds=seeds[:max(1, n_candidates // 3)])
+        return candidate_grid(embedders=self.embedders,
+                              seeds=seeds[:max(1, n_candidates // 3)],
+                              n_qubits=getattr(problem, 'n', 10))
 
 
 class GridProposer(RepresentationProposer):
-    def __init__(self, seed: int = 0) -> None:
+    """Grid proposer that respects the scheduler's embedders list."""
+
+    def __init__(self, seed: int = 0, embedders: list[str] | None = None) -> None:
         self.seed = seed
+        self.embedders = embedders or ["interaction", "spring", "blade"]
 
     def propose(self, problem, history, n_candidates: int, budget: int) -> list[RepresentationCandidate]:
-        return candidate_grid(seeds=list(range(self.seed, self.seed + max(1, n_candidates // 6))))
+        n_qubits = getattr(problem, 'n', 10)
+        return candidate_grid_stratified(
+            embedders=self.embedders,
+            n_per_family=max(1, n_candidates // max(1, len(self.embedders))),
+            seed=self.seed, n_qubits=n_qubits)
 
 
 class AdaptiveHeuristicProposer(RepresentationProposer):
     """Propose more candidates from embedder families that performed well historically."""
 
-    def __init__(self, seed: int = 0) -> None:
+    def __init__(self, seed: int = 0, embedders: list[str] | None = None) -> None:
         self.seed = seed
+        self.embedders = embedders or ["interaction", "spring", "blade"]
 
     def propose(self, problem, history, n_candidates: int, budget: int) -> list[RepresentationCandidate]:
+        n_qubits = getattr(problem, 'n', 10)
         if not history:
-            return candidate_grid(seeds=list(range(self.seed, self.seed + 3)))
+            return candidate_grid_stratified(
+                embedders=self.embedders, n_per_family=2,
+                seed=self.seed, n_qubits=n_qubits)
         # rank embedders by mean frobenius error (lower better)
         from collections import defaultdict
         sums = defaultdict(list)
@@ -59,7 +72,7 @@ class AdaptiveHeuristicProposer(RepresentationProposer):
         ranked = sorted(sums.items(), key=lambda kv: np.mean(kv[1]))
         best_embedders = [k for k, _ in ranked[:2]]
         seeds = list(range(self.seed, self.seed + max(1, n_candidates // 3)))
-        return candidate_grid(embedders=best_embedders, seeds=seeds)
+        return candidate_grid(embedders=best_embedders, seeds=seeds, n_qubits=n_qubits)
 
 
 class WestQuantProposer(RepresentationProposer):
@@ -69,9 +82,10 @@ class WestQuantProposer(RepresentationProposer):
     representation design, but the project remains fully functional without it.
     """
 
-    def __init__(self, model=None, seed: int = 0) -> None:
+    def __init__(self, model=None, seed: int = 0, embedders: list[str] | None = None) -> None:
         self.model = model
-        self._fallback = AdaptiveHeuristicProposer(seed=seed)
+        self.embedders = embedders or ["interaction", "spring", "blade"]
+        self._fallback = AdaptiveHeuristicProposer(seed=seed, embedders=self.embedders)
 
     def propose(self, problem, history, n_candidates: int, budget: int) -> list[RepresentationCandidate]:
         if self.model is None:

@@ -1,3 +1,5 @@
+Running MWIS path(n=4) factorial...
+Benchmark complete. Results in /Users/davidvesterlund/freedomcode/freedomcode/stringtheory/qla_studio_v0.2/qla_representation_lab/westquant_qoolqit/results
 {
   "problem": "MWIS path n=4",
   "n_cells": 9,

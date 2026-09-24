@@ -1,14 +1,11 @@
 {
   "qoolqit_version": "1.4.0",
-  "qoolqit_git_commit": "installed-pypi",
-  "pulser_version": "1.9.1",
   "python_version": "3.10.12",
   "numpy_version": "2.2.6",
   "scipy_version": "1.15.3",
   "networkx_version": "3.4.2",
-  "torch_version": "2.12.0",
   "platform": "macOS-26.4-arm64-arm-64bit",
-  "random_seed": 42,
-  "timestamp": "2026-09-24T15:08:47.793602+00:00",
-  "machine": "Mac"
+  "seed": 42,
+  "experiment_id": "smoke_v1",
+  "timestamp": "2026-09-24T17:14:39"
 }

@@ -5,6 +5,13 @@ Every transformation is classified into exactly one of:
     APPROXIMATE, INVALID
 
 For n <= 16 verification is exhaustive over all 2^n states.
+
+Equivalence semantics:
+    EXACT_EQUIVALENT: E'(T(x)) = a*E(x) + b  with a > 0 for every state x.
+    GROUND_STATE_EQUIVALENT: T(argmin E) == argmin E'  (including degeneracies).
+    SAME_PROBLEM_DIFFERENT_DYNAMICS: same classical objective, different dynamics.
+    APPROXIMATE: quantitative approximation criterion satisfied.
+    INVALID: fails all above.
 """
 
 from __future__ import annotations
@@ -14,7 +21,7 @@ from enum import Enum
 from typing import Callable
 
 import numpy as np
-from scipy.stats import spearmanr, kendalltau
+from scipy.stats import rankdata, spearmanr, kendalltau
 
 from .types import BinaryQuadraticHamiltonian
 
@@ -46,15 +53,27 @@ class EquivalenceReport:
 
 def _best_affine(E_orig: np.ndarray, E_new: np.ndarray) -> tuple[float, float, float]:
     """Find a>0, b minimizing ||E_new - (a E_orig + b)||. Returns (a, b, residual)."""
-    # minimize over a>0: linear least squares with sign constraint
     A = np.column_stack([E_orig, np.ones_like(E_orig)])
     coef, *_ = np.linalg.lstsq(A, E_new, rcond=None)
     a, b = float(coef[0]), float(coef[1])
     if a <= 0:
-        # try forcing a>0 by projecting
         a = abs(a) if a != 0 else 1e-12
     resid = float(np.max(np.abs(E_new - (a * E_orig + b))))
     return a, b, resid
+
+
+def _tie_aware_ordering_match(E1: np.ndarray, E2: np.ndarray, tol: float = 1e-9) -> bool:
+    """Check if two energy arrays have the same ordering, respecting ties.
+
+    Uses rankdata(method='average') so that degenerate levels get the same rank.
+    Two orderings match iff their tie-aware ranks are identical.
+    """
+    r1 = rankdata(E1, method='average')
+    r2 = rankdata(E2, method='average')
+    # Normalize to compare rank patterns (allowing for different scale)
+    # For exact equivalence, ranks must be identical up to affine transform
+    # But since we already check affine separately, here we check rank equality
+    return bool(np.allclose(r1, r2, atol=tol))
 
 
 def verify_equivalence(
@@ -70,11 +89,15 @@ def verify_equivalence(
     If forward_map is given, the candidate is interpreted as E'(T(x)) ~ a E(x) + b
     and we compare E'(T(x)) against a E(x)+b.  If no map is given we compare the
     energy orderings directly (used for ground-state-equivalent penalty families).
+
+    Ground-state verification when forward_map is provided:
+        G = argmin E_orig   (set of original ground states)
+        G' = argmin E_new   (set of candidate ground states)
+        We require T(G) == G'  (mapped original ground states match candidate ground states).
     """
     n = original.n
     exhaustive = n <= 16
     if not exhaustive:
-        # sample a subset of states for approximate verification
         rng = np.random.default_rng(0)
         n_states = min(4096, 2**n)
         idx = rng.choice(2**n, size=n_states, replace=False)
@@ -99,16 +122,38 @@ def verify_equivalence(
     gs_new = np.isclose(E_new, e0_new, atol=1e-9, rtol=0.0)
 
     if forward_map is not None:
-        # mapped ground state: T(argmin E) should equal argmin E'
-        gs_mapped = gs_orig.copy()
+        # MAPPED ground-state verification:
+        # T(argmin E_orig) should equal argmin E_new
+        # gs_orig is a boolean mask over original states.
+        # We need to check: for each original ground state x, T(x) is a candidate
+        # ground state; AND every candidate ground state is T(x) for some
+        # original ground state x.
+        #
+        # Since we already computed E_new = candidate.energy(forward_map(bits)),
+        # gs_new is the set of mapped states that are candidate ground states.
+        # gs_orig is the set of original states that are original ground states.
+        # The mapped ground-state set is: { T(x) : x in argmin E_orig }
+        # In our array representation, this is gs_new restricted to indices where
+        # gs_orig is True (because E_new[i] = candidate.energy(T(bits[i]))).
+        #
+        # CORRECT verification:
+        # 1. Every original ground state maps to a candidate ground state:
+        #    gs_orig → gs_new  (if gs_orig[i] then gs_new[i])
+        # 2. Every candidate ground state is the image of some original ground state:
+        #    gs_new ⊆ T(gs_orig)  (if gs_new[i] then gs_orig[i])
+        # Combined: gs_new[i] == gs_orig[i] for all i (in the mapped space)
+        gs_mapped = gs_orig.copy()  # which original states are ground states
+        # Check: original ground states map to candidate ground states
+        orig_gs_map_to_new_gs = bool(np.all(gs_new[gs_mapped]))
+        # Check: all candidate ground states come from original ground states
+        new_gs_come_from_orig_gs = bool(np.all(gs_mapped[gs_new]))
+        ground_state_match = orig_gs_map_to_new_gs and new_gs_come_from_orig_gs
     else:
-        gs_mapped = gs_new
+        # No forward map: compare ground-state sets directly
+        ground_state_match = bool(np.array_equal(gs_orig, gs_new))
 
-    ground_state_match = bool(np.array_equal(gs_orig, gs_mapped))
-    # ordering match: ranks identical
-    r_orig = np.argsort(np.argsort(E_orig))
-    r_new = np.argsort(np.argsort(E_new))
-    ordering_match = bool(np.array_equal(r_orig, r_new))
+    # ordering match: tie-aware ranks identical
+    ordering_match = _tie_aware_ordering_match(E_orig, E_new, tol=1e-9)
 
     # rank correlations
     sp = spearmanr(E_orig, E_new)

@@ -110,37 +110,37 @@ def shift_assignment(n_workers: int = 4, n_shifts: int = 3, seed: int = 0):
     Variables x_{w,s} = 1 if worker w assigned to shift s.  Constraints:
       - each worker assigned to exactly one shift (one-hot)
       - minimize a soft cost (random preferences).
+
+    The one-hot penalty is P * (sum_s x_{w,s} - 1)^2 which expands to:
+      P * (sum_s x_{w,s}^2 + 2*sum_{s<s'} x_{w,s} x_{w,s'} - 2*sum_s x_{w,s} + 1)
+
+    Since x^2 = x for binary variables, the diagonal contribution is:
+      P * (1 - 2) = -P  per variable (from the -2*sum term)
+    The off-diagonal contribution is:
+      2*P  per pair (from the 2*sum_{s<s'} term)
+    The constant P is dropped (doesn't affect optimization).
+
     Encoded as a QUBO small enough for exact enumeration.
     """
     rng = np.random.default_rng(seed)
     n = n_workers * n_shifts
-    # one-hot constraint: sum_s x_{w,s} = 1  => penalty (sum-1)^2
     Q = np.zeros((n, n))
     P = 5.0
     for w in range(n_workers):
         idxs = [w * n_shifts + s for s in range(n_shifts)]
+        # One-hot penalty: P * (sum - 1)^2
         for a in idxs:
-            Q[a, a] += P * (1 - 2)  # -P from (sum-1)^2 = sum^2 -2sum +1
-            Q[a, a] += rng.uniform(-1, 1)  # soft cost
+            Q[a, a] += -2 * P  # from -2*P*sum term
         for a in idxs:
             for b in idxs:
                 if a != b:
-                    Q[a, b] += P
+                    Q[a, b] += P  # from P*sum_{s<s'} term (symmetric, so each pair gets P)
+        # Soft preference cost on diagonal
         for a in idxs:
-            Q[a, a] += -2 * P  # -2*sum term contributes -2P per var... careful
-    # rebuild cleanly
-    Q = np.zeros((n, n))
-    for w in range(n_workers):
-        idxs = [w * n_shifts + s for s in range(n_shifts)]
-        for a in idxs:
-            Q[a, a] += rng.uniform(-1, 1)  # soft preference cost
-        for a in idxs:
-            for b in idxs:
-                Q[a, b] += P
-        for a in idxs:
-            Q[a, a] += -2 * P
+            Q[a, a] += rng.uniform(-1, 1)
     h = BinaryQuadraticHamiltonian.from_qubo(Q)
-    h.metadata = {"type": "scheduling", "n_workers": n_workers, "n_shifts": n_shifts, "seed": seed}
+    h.metadata = {"type": "scheduling", "n_workers": n_workers,
+                  "n_shifts": n_shifts, "seed": seed}
     return h
 
 

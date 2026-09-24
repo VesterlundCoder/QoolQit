@@ -1,161 +1,337 @@
-"""Benchmark runner: generates the factorial experiment, figures, and manifest.
+"""Run benchmark experiments with smoke and flagship modes.
 
-Run from the repo root:
-    python -m westquant_qoolqit.run_benchmarks
+Usage:
+    python -m westquant_qoolqit.run_benchmarks --mode smoke
+    python -m westquant_qoolqit.run_benchmarks --mode flagship
+    python -m westquant_qoolqit.run_benchmarks --config experiments/flagship_v1.yaml
 
-Produces:
-    results/raw/benchmark_cells.jsonl
-    results/processed/benchmark_summary.json
-    results/figures/factorial_heatmap.png
-    results/figures/variance_decomposition.png
-    results/figures/pareto_front.png
-    results/manifests/environment.json
+Outputs are stored under results/runs/<experiment_id>/ with:
+    config.yaml          — frozen experiment config
+    environment.json      — software versions + seed
+    raw/cells.jsonl       — per-cell records
+    processed/summary.json — aggregate statistics
+    processed/report_metrics.json — single source of truth for documentation
+    figures/              — generated figures
 """
 
 from __future__ import annotations
 
+import argparse
 import json
+import os
+import shutil
+import sys
+import time
 from pathlib import Path
 
-import matplotlib
-matplotlib.use("Agg")
-import matplotlib.pyplot as plt
 import numpy as np
 
-from .common import capture_environment, write_jsonl, solve_exact
+from .common.reproducibility import capture_environment
+from .common.serialization import write_jsonl
 from .combined import combined_search
-from .benchmarks import mwis_path, mwis_grid, mwis_random_geometric, synthetic_qubo
+from .benchmarks import (
+    mwis_path, mwis_cycle, mwis_grid, mwis_random_geometric, mwis_erdos_renyi,
+)
 
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-RESULTS = REPO_ROOT / "results"
+EXPERIMENTS_DIR = REPO_ROOT / "experiments"
+RESULTS_DIR = REPO_ROOT / "results"
 
 
-def run_mwis_factorial(n: int = 4, num_shots: int = 200, seed: int = 42) -> dict:
-    """Run the flagship MWIS H x R factorial experiment."""
-    h, info = mwis_path(n=n, seed=seed)
-    res = combined_search(
-        h, mwis_info=info, n_hamiltonians=3, n_embedders=3,
-        num_shots=num_shots, seed=seed, run_emulation=True, run_robustness=True,
-        robustness_samples=3,
-    )
-    return {"result": res, "problem": h, "info": info}
+def load_problem(problem_spec: dict):
+    """Load a problem from its spec dict."""
+    ptype = problem_spec["type"]
+    if ptype == "mwis_path":
+        return mwis_path(n=problem_spec["n"], seed=problem_spec["seed"])
+    elif ptype == "mwis_cycle":
+        return mwis_cycle(n=problem_spec["n"], seed=problem_spec["seed"])
+    elif ptype == "mwis_grid":
+        return mwis_grid(rows=problem_spec["rows"], cols=problem_spec["cols"],
+                         seed=problem_spec["seed"])
+    elif ptype == "mwis_random_geometric":
+        return mwis_random_geometric(n=problem_spec["n"], radius=problem_spec.get("radius", 0.7),
+                                     seed=problem_spec["seed"])
+    elif ptype == "mwis_erdos_renyi":
+        return mwis_erdos_renyi(n=problem_spec["n"], p=problem_spec.get("p", 0.4),
+                                seed=problem_spec["seed"])
+    else:
+        raise ValueError(f"Unknown problem type: {ptype}")
 
 
-def plot_factorial_heatmap(res, metric: str, title: str, path: Path) -> None:
-    mat = res.matrix(metric)
-    fig, ax = plt.subplots(figsize=(7, 5))
-    im = ax.imshow(mat, cmap="viridis", aspect="auto")
-    ax.set_xticks(range(mat.shape[1]))
-    ax.set_yticks(range(mat.shape[0]))
-    ax.set_xticklabels([f"R{i+1}" for i in range(mat.shape[1])])
-    ax.set_yticklabels(res.hamiltonian_ids)
-    ax.set_xlabel("Embedding candidate")
-    ax.set_ylabel("Hamiltonian representation")
-    ax.set_title(title)
-    for i in range(mat.shape[0]):
-        for j in range(mat.shape[1]):
-            v = mat[i, j]
-            if not np.isnan(v):
-                ax.text(j, i, f"{v:.3f}", ha="center", va="center", color="w", fontsize=9)
-    fig.colorbar(im, ax=ax)
-    fig.tight_layout()
-    fig.savefig(path, dpi=150)
-    plt.close(fig)
+def run_experiment(config: dict, experiment_id: str) -> dict:
+    """Run the full benchmark experiment from a config dict."""
+    t0 = time.time()
+    problems = config["problems"]
+    n_h = config["hamiltonian"]["n_representations"]
+    n_per_family = config["embedding"]["n_per_family"]
+    embedder_families = config["embedding"]["families"]
+    num_shots = config["execution"]["num_shots"]
+    n_replicates = config["execution"]["n_replicates"]
+    schedule = config["control"]["schedule"]
+    robustness_enabled = config.get("robustness", {}).get("enabled", False)
+    robustness_samples = config.get("robustness", {}).get("samples", 0)
+    base_seed = config["seeds"]["base"]
 
+    all_results = []
+    all_records = []
 
-def plot_variance_decomposition(res, path: Path) -> None:
-    metrics = ["ground_state_probability", "frobenius_error", "logical_fidelity_rho"]
-    fracs = []
-    for m in metrics:
-        vd = res.variance_decomposition(m)
-        fracs.append((m, vd.get("frac_H", 0), vd.get("frac_R", 0)))
-    fig, ax = plt.subplots(figsize=(8, 5))
-    x = np.arange(len(metrics))
-    w = 0.35
-    h_fracs = [f[1] for f in fracs]
-    r_fracs = [f[2] for f in fracs]
-    ax.bar(x - w/2, h_fracs, w, label="Hamiltonian (H)", color="#2196F3")
-    ax.bar(x + w/2, r_fracs, w, label="Embedding (R)", color="#FF9800")
-    ax.set_xticks(x)
-    ax.set_xticklabels([m.replace("_", " ") for m in metrics], rotation=15)
-    ax.set_ylabel("Fraction of total variance")
-    ax.set_title("Variance decomposition: H vs R")
-    ax.legend()
-    fig.tight_layout()
-    fig.savefig(path, dpi=150)
-    plt.close(fig)
+    for pspec in problems:
+        print(f"  Running {pspec['id']}...")
+        h, info = load_problem(pspec)
+        result = combined_search(
+            h, mwis_info=info,
+            n_hamiltonians=n_h,
+            n_embedders=n_per_family * len(embedder_families),
+            embedder_methods=embedder_families,
+            num_shots=num_shots,
+            n_replicates=n_replicates,
+            seed=base_seed,
+            run_emulation=True,
+            run_robustness=robustness_enabled,
+            robustness_samples=robustness_samples,
+            schedule=schedule,
+        )
+        # Collect per-problem stats
+        mat = result.matrix("ground_state_probability")
+        vd = result.variance_decomposition("ground_state_probability")
+        best = result.best_cell("ground_state_probability")
+        baseline = result.baseline_cell("ground_state_probability")
+        problem_result = {
+            "problem_id": pspec["id"],
+            "n_cells": len(result.cells),
+            "hamiltonian_ids": result.hamiltonian_ids,
+            "embedder_ids": result.embedder_ids,
+            "embedder_families": result.embedder_families,
+            "variance_decomposition": vd,
+            "best_cell": {"hamiltonian_id": best.hamiltonian_id, "embedder": best.embedder,
+                          "p_opt": best.ground_state_probability} if best else None,
+            "baseline_cell": {"hamiltonian_id": baseline.hamiltonian_id,
+                              "embedder": baseline.embedder,
+                              "p_opt": baseline.ground_state_probability} if baseline else None,
+        }
+        if best and baseline and best.ground_state_probability and baseline.ground_state_probability:
+            bp = best.ground_state_probability
+            bl = baseline.ground_state_probability
+            problem_result["improvement"] = {
+                "absolute": bp - bl,
+                "relative": (bp - bl) / bl if bl > 0 else 0.0,
+            }
+        all_results.append(problem_result)
+        all_records.extend(result.records)
 
+    elapsed = time.time() - t0
 
-def plot_pareto(res, path: Path) -> None:
-    """Pareto scatter: frobenius error (x, lower better) vs solution probability (y, higher)."""
-    xs, ys, ids = [], [], []
-    for c in res.cells:
-        if c.frobenius_error is not None and c.ground_state_probability is not None:
-            xs.append(c.frobenius_error)
-            ys.append(c.ground_state_probability)
-            ids.append(f"{c.hamiltonian_id}\n{c.embedder}")
-    if not xs:
-        return
-    xs = np.array(xs); ys = np.array(ys)
-    # simple pareto front (min x, max y)
-    keep = np.ones(len(xs), dtype=bool)
-    for i in range(len(xs)):
-        for j in range(len(xs)):
-            if i != j and xs[j] <= xs[i] and ys[j] >= ys[i] and (xs[j] < xs[i] or ys[j] > ys[i]):
-                keep[i] = False
-                break
-    fig, ax = plt.subplots(figsize=(8, 6))
-    ax.scatter(xs[~keep], ys[~keep], c="gray", alpha=0.5, label="dominated")
-    ax.scatter(xs[keep], ys[keep], c="red", s=80, label="Pareto front", zorder=5)
-    for i in np.where(keep)[0]:
-        ax.annotate(ids[i], (xs[i], ys[i]), fontsize=7, alpha=0.7)
-    ax.set_xlabel("Interaction Frobenius error (lower is better)")
-    ax.set_ylabel("Solution probability (higher is better)")
-    ax.set_title("Pareto front across H x R representations")
-    ax.legend()
-    fig.tight_layout()
-    fig.savefig(path, dpi=150)
-    plt.close(fig)
+    # Aggregate across problems
+    improvements = [r["improvement"]["relative"] for r in all_results
+                    if "improvement" in r and r["improvement"]["relative"] is not None]
+    eta2_H_values = [r["variance_decomposition"].get("eta2_H", 0) for r in all_results]
+    eta2_R_values = [r["variance_decomposition"].get("eta2_R", 0) for r in all_results]
+    eta2_HxR_values = [r["variance_decomposition"].get("eta2_HxR", 0) for r in all_results]
 
-
-def main() -> None:
-    RESULTS.mkdir(parents=True, exist_ok=True)
-    (RESULTS / "raw").mkdir(exist_ok=True)
-    (RESULTS / "processed").mkdir(exist_ok=True)
-    (RESULTS / "figures").mkdir(exist_ok=True)
-    (RESULTS / "manifests").mkdir(exist_ok=True)
-
-    # environment manifest
-    env = capture_environment(seed=42)
-    (RESULTS / "manifests" / "environment.json").write_text(json.dumps(env.to_dict(), indent=2))
-
-    # flagship MWIS factorial
-    print("Running MWIS path(n=4) factorial...")
-    out = run_mwis_factorial(n=4, num_shots=200, seed=42)
-    res = out["result"]
-    write_jsonl(res.records, RESULTS / "raw" / "benchmark_cells.jsonl")
-
-    # summary
-    summary = {
-        "problem": "MWIS path n=4",
-        "n_cells": len(res.cells),
-        "hamiltonian_ids": res.hamiltonian_ids,
-        "variance_decomposition_p_opt": res.variance_decomposition("ground_state_probability"),
-        "variance_decomposition_frob": res.variance_decomposition("frobenius_error"),
-        "best_cell_p_opt": max(res.cells, key=lambda c: c.ground_state_probability or -1).hamiltonian_id
-                            if any(c.ground_state_probability for c in res.cells) else None,
+    report_metrics = {
+        "experiment_id": experiment_id,
+        "n_problems": len(all_results),
+        "n_hamiltonian_representations": n_h,
+        "n_embedding_representations": n_per_family * len(embedder_families),
+        "n_cells_total": sum(r["n_cells"] for r in all_results),
+        "n_replicates": n_replicates,
+        "eta2_H_median": float(np.median(eta2_H_values)) if eta2_H_values else 0.0,
+        "eta2_R_median": float(np.median(eta2_R_values)) if eta2_R_values else 0.0,
+        "eta2_HxR_median": float(np.median(eta2_HxR_values)) if eta2_HxR_values else 0.0,
+        "median_improvement": float(np.median(improvements)) if improvements else 0.0,
+        "fraction_improved": sum(1 for x in improvements if x > 0) / len(improvements) if improvements else 0.0,
+        "elapsed_seconds": elapsed,
+        "qoolqit_version": config["qoolqit_version"],
     }
-    (RESULTS / "processed" / "benchmark_summary.json").write_text(json.dumps(summary, indent=2, default=str))
 
-    # figures
-    plot_factorial_heatmap(res, "ground_state_probability",
-                           "Solution probability: H x R factorial",
-                           RESULTS / "figures" / "factorial_heatmap.png")
-    plot_variance_decomposition(res, RESULTS / "figures" / "variance_decomposition.png")
-    plot_pareto(res, RESULTS / "figures" / "pareto_front.png")
-    print(f"Benchmark complete. Results in {RESULTS}")
-    print(json.dumps(summary, indent=2, default=str))
+    return {
+        "report_metrics": report_metrics,
+        "per_problem": all_results,
+        "records": all_records,
+        "elapsed_seconds": elapsed,
+    }
+
+
+def save_results(experiment_data: dict, config: dict, experiment_id: str):
+    """Save results under results/runs/<experiment_id>/."""
+    run_dir = RESULTS_DIR / "runs" / experiment_id
+    raw_dir = run_dir / "raw"
+    processed_dir = run_dir / "processed"
+    figures_dir = run_dir / "figures"
+    for d in [run_dir, raw_dir, processed_dir, figures_dir]:
+        d.mkdir(parents=True, exist_ok=True)
+
+    # Save config
+    import yaml
+    with open(run_dir / "config.yaml", "w") as f:
+        yaml.dump(config, f, default_flow_style=False)
+
+    # Save environment
+    env = capture_environment(seed=config["seeds"]["base"])
+    env_dict = {
+        "qoolqit_version": env.qoolqit_version,
+        "python_version": env.python_version,
+        "numpy_version": env.numpy_version,
+        "scipy_version": env.scipy_version,
+        "networkx_version": env.networkx_version,
+        "platform": env.platform,
+        "seed": config["seeds"]["base"],
+        "experiment_id": experiment_id,
+        "timestamp": time.strftime("%Y-%m-%dT%H:%M:%S"),
+    }
+    with open(run_dir / "environment.json", "w") as f:
+        json.dump(env_dict, f, indent=2)
+
+    # Save raw records
+    write_jsonl(experiment_data["records"], str(raw_dir / "cells.jsonl"))
+
+    # Save processed results
+    with open(processed_dir / "summary.json", "w") as f:
+        json.dump(experiment_data["per_problem"], f, indent=2)
+
+    with open(processed_dir / "report_metrics.json", "w") as f:
+        json.dump(experiment_data["report_metrics"], f, indent=2)
+
+    # Update latest pointer
+    latest_file = RESULTS_DIR / "latest.txt"
+    latest_file.write_text(experiment_id)
+
+    print(f"\nResults saved to: {run_dir}")
+    print(f"Report metrics: {processed_dir / 'report_metrics.json'}")
+    return run_dir
+
+
+def generate_figures(experiment_data: dict, run_dir: Path):
+    """Generate flagship figures from experiment data."""
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+
+    figures_dir = run_dir / "figures"
+
+    # Figure: H×R heatmap for first problem
+    per_problem = experiment_data["per_problem"]
+    if per_problem:
+        pp = per_problem[0]
+        # Reconstruct matrix from records
+        h_ids = pp["hamiltonian_ids"]
+        r_ids = pp["embedder_ids"]
+        mat = np.full((len(h_ids), len(r_ids)), np.nan)
+        hidx = {h: i for i, h in enumerate(h_ids)}
+        ridx = {r: i for i, r in enumerate(r_ids)}
+        for rec in experiment_data["records"]:
+            if rec.get("problem_id", pp["problem_id"]) == pp["problem_id"]:
+                if "solution_probability" in rec:
+                    h = rec["hamiltonian_id"]
+                    r = rec["embedder"]
+                    if h in hidx and r in ridx:
+                        mat[hidx[h], ridx[r]] = rec["solution_probability"]
+        if not np.all(np.isnan(mat)):
+            fig, ax = plt.subplots(figsize=(8, 6))
+            im = ax.imshow(mat, cmap="viridis", aspect="auto")
+            ax.set_xticks(range(len(r_ids)))
+            ax.set_yticks(range(len(h_ids)))
+            ax.set_xticklabels(r_ids, rotation=45, ha="right", fontsize=8)
+            ax.set_yticklabels(h_ids, fontsize=8)
+            ax.set_xlabel("Embedding representation")
+            ax.set_ylabel("Hamiltonian representation")
+            ax.set_title(f"H × R solution probability: {pp['problem_id']}")
+            for i in range(mat.shape[0]):
+                for j in range(mat.shape[1]):
+                    v = mat[i, j]
+                    if not np.isnan(v):
+                        ax.text(j, i, f"{v:.3f}", ha="center", va="center", color="w", fontsize=9)
+            fig.colorbar(im, ax=ax, label="p(optimum)")
+            plt.tight_layout()
+            plt.savefig(figures_dir / "factorial_heatmap.png", dpi=150)
+            plt.close()
+
+    # Figure: Variance decomposition
+    rm = experiment_data["report_metrics"]
+    fig, ax = plt.subplots(figsize=(6, 4))
+    categories = ["H", "R", "H×R"]
+    values = [rm["eta2_H_median"], rm["eta2_R_median"], rm["eta2_HxR_median"]]
+    colors = ["#1a237e", "#0d47a1", "#1565c0"]
+    ax.bar(categories, values, color=colors)
+    ax.set_ylabel("η² (effect size)")
+    ax.set_title("Variance decomposition (median across problems)")
+    ax.set_ylim(0, max(0.6, max(values) * 1.1))
+    for i, v in enumerate(values):
+        ax.text(i, v + 0.01, f"{v:.1%}", ha="center", va="bottom")
+    plt.tight_layout()
+    plt.savefig(figures_dir / "variance_decomposition.png", dpi=150)
+    plt.close()
+
+    # Figure: Baseline vs best
+    improvements = []
+    labels = []
+    for pp in per_problem:
+        if "improvement" in pp and pp["improvement"]["relative"] is not None:
+            improvements.append(pp["improvement"]["relative"])
+            labels.append(pp["problem_id"])
+    if improvements:
+        fig, ax = plt.subplots(figsize=(10, 5))
+        x = np.arange(len(labels))
+        ax.bar(x, improvements, color=["#2e7d32" if v > 0 else "#c62828" for v in improvements])
+        ax.set_xticks(x)
+        ax.set_xticklabels(labels, rotation=45, ha="right", fontsize=8)
+        ax.set_ylabel("Relative improvement")
+        ax.set_title("Search improvement over baseline")
+        ax.axhline(y=0, color="black", linewidth=0.5)
+        plt.tight_layout()
+        plt.savefig(figures_dir / "baseline_comparison.png", dpi=150)
+        plt.close()
+
+    print(f"Figures saved to: {figures_dir}")
+
+
+def main():
+    parser = argparse.ArgumentParser(description="Run WestQuant QoolQit benchmarks")
+    parser.add_argument("--mode", choices=["smoke", "flagship"], default="smoke",
+                        help="Benchmark mode (smoke=fast CI, flagship=official results)")
+    parser.add_argument("--config", type=str, default=None,
+                        help="Path to experiment config YAML")
+    args = parser.parse_args()
+
+    import yaml
+    if args.config:
+        config_path = Path(args.config)
+    else:
+        config_name = f"{args.mode}_v1.yaml"
+        config_path = EXPERIMENTS_DIR / config_name
+
+    if not config_path.exists():
+        print(f"Config not found: {config_path}")
+        sys.exit(1)
+
+    with open(config_path) as f:
+        config = yaml.safe_load(f)
+
+    experiment_id = config["experiment_id"]
+    print(f"=== WestQuant QoolQit Benchmark: {experiment_id} ===")
+    print(f"Mode: {args.mode}")
+    print(f"Problems: {len(config['problems'])}")
+    print(f"Hamiltonians per problem: {config['hamiltonian']['n_representations']}")
+    print(f"Embedders per problem: {config['embedding']['n_per_family'] * len(config['embedding']['families'])}")
+    print(f"Replicates: {config['execution']['n_replicates']}")
+    print(f"Shots: {config['execution']['num_shots']}")
+    print()
+
+    experiment_data = run_experiment(config, experiment_id)
+    run_dir = save_results(experiment_data, config, experiment_id)
+    generate_figures(experiment_data, run_dir)
+
+    rm = experiment_data["report_metrics"]
+    print(f"\n=== Results ===")
+    print(f"Problems: {rm['n_problems']}")
+    print(f"Total cells: {rm['n_cells_total']}")
+    print(f"η²(H)  median: {rm['eta2_H_median']:.1%}")
+    print(f"η²(R)  median: {rm['eta2_R_median']:.1%}")
+    print(f"η²(H×R) median: {rm['eta2_HxR_median']:.1%}")
+    print(f"Median improvement: {rm['median_improvement']:.1%}")
+    print(f"Fraction improved: {rm['fraction_improved']:.1%}")
+    print(f"Elapsed: {rm['elapsed_seconds']:.1f}s")
 
 
 if __name__ == "__main__":

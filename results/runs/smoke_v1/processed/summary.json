@@ -1,0 +1,52 @@
+[
+  {
+    "problem_id": "path_n5_seed42",
+    "n_cells": 9,
+    "hamiltonian_ids": [
+      "H_mwis_U5.543",
+      "H_mwis_U6.652",
+      "H_mwis_U8.869"
+    ],
+    "embedder_ids": [
+      "R_int_s42_r0",
+      "R_spr_s43_it50",
+      "R_bld_s44_d4"
+    ],
+    "embedder_families": [
+      "interaction",
+      "spring",
+      "blade"
+    ],
+    "variance_decomposition": {
+      "ss_H": 0.00740555555555555,
+      "ss_R": 0.011105555555555558,
+      "ss_HxR": 0.03234444444444444,
+      "ss_residual": 0.0,
+      "ss_total": 0.050855555555555564,
+      "eta2_H": 0.14561940135459894,
+      "eta2_R": 0.21837448110115798,
+      "eta2_HxR": 0.6360061175442427,
+      "eta2_residual": 0.0,
+      "df_H": 2,
+      "df_R": 2,
+      "df_HxR": 4,
+      "df_residual": 0,
+      "n_cells": 9,
+      "n_replicates": 1
+    },
+    "best_cell": {
+      "hamiltonian_id": "H_mwis_U5.543",
+      "embedder": "R_int_s42_r0",
+      "p_opt": 0.255
+    },
+    "baseline_cell": {
+      "hamiltonian_id": "H_mwis_U5.543",
+      "embedder": "R_int_s42_r0",
+      "p_opt": 0.255
+    },
+    "improvement": {
+      "absolute": 0.0,
+      "relative": 0.0
+    }
+  }
+]

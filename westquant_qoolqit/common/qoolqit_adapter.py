@@ -39,11 +39,19 @@ from qoolqit.embedding import (
 from qoolqit.execution import BitStrings, EmulationConfig, LocalEmulator
 from qoolqit.execution.backends import QutipBackendV2
 from qoolqit.graphs import DataGraph
-from qoolqit.waveforms import ConstantWaveform, RampWaveform
+from qoolqit.waveforms import BlackmanWaveform, CompositeWaveform, ConstantWaveform, RampWaveform
 
 from .types import BinaryQuadraticHamiltonian
 
 QOOLQIT_VERSION = "1.4.0"
+
+# --------------------------------------------------------------------------- #
+# Centralized numerical tolerances
+# --------------------------------------------------------------------------- #
+TOL_ENERGY_EQUIVALENCE = 1e-6
+TOL_COORD_DUPLICATE = 1e-9
+TOL_GROUND_STATE = 1e-9
+TOL_AFFINE_FIT = 1e-6
 
 
 # --------------------------------------------------------------------------- #
@@ -82,7 +90,11 @@ def run_embedder(
 
     if method == "interaction":
         cfg_kwargs = {k: v for k, v in config.items() if k in {"method", "maxiter", "tol", "x0"}}
-        if "x0" in cfg_kwargs and cfg_kwargs["x0"] is not None:
+        # If x0 is provided as a 1-D array, it will be reshaped to (n, 2) inside
+        # the embedder.  If x0 is None, QoolQit uses a hardcoded rng(1), so all
+        # "restarts" with x0=None produce identical results.  To get genuine
+        # restarts we MUST pass a concrete x0 generated from the caller's seed.
+        if cfg_kwargs.get("x0") is not None:
             cfg_kwargs["x0"] = np.asarray(cfg_kwargs["x0"], dtype=float)
         from qoolqit.embedding.algorithms.interaction_embedding import InteractionEmbedderConfig
         cfg = InteractionEmbedderConfig(**cfg_kwargs)
@@ -138,39 +150,119 @@ def build_adiabatic_drive(
     amp_max: float = 1.5,
     det_max: float = 5.0,
     dmm: DetuningMapModulator | None = None,
+    schedule: str = "linear",
 ) -> Drive:
-    """Build a standard adiabatic drive: ramp amplitude up, sweep detuning from negative to positive.
+    """Build a physically valid adiabatic drive.
+
+    The amplitude schedule starts at 0, rises to ``amp_max``, and returns to 0
+    at the terminal time so that the final measurement is interpreted against
+    the classical target objective without a residual transverse field.
+
+    Schedules:
+        - ``"linear"``: piecewise-linear ramp up then ramp down.
+        - ``"blackman"``: smooth Blackman pulse (naturally 0 → max → 0).
+        - ``"ramp_flat"``: ramp up, flat hold, ramp down.
+
+    The detuning sweeps from ``-det_max`` to ``+det_max`` (linear ramp).
 
     All values are dimensionless (QoolQit's adimensional framework).
     """
-    amp = RampWaveform(duration, 0.0, amp_max)
+    if schedule == "linear":
+        half = duration / 2.0
+        amp = CompositeWaveform(
+            RampWaveform(half, 0.0, amp_max),
+            RampWaveform(half, amp_max, 0.0),
+        )
+    elif schedule == "blackman":
+        amp = BlackmanWaveform(duration, amp_max)
+    elif schedule == "ramp_flat":
+        quarter = duration / 4.0
+        half = duration / 2.0
+        amp = CompositeWaveform(
+            RampWaveform(quarter, 0.0, amp_max),
+            ConstantWaveform(half, amp_max),
+            RampWaveform(quarter, amp_max, 0.0),
+        )
+    else:
+        raise ValueError(f"Unknown schedule: {schedule}")
+
     det = RampWaveform(duration, -det_max, det_max)
     if dmm is not None:
         return Drive(amplitude=amp, detuning=det, dmm=dmm, phase=0.0)
     return Drive(amplitude=amp, detuning=det, phase=0.0)
 
 
+def build_mwis_dmm(
+    h: BinaryQuadraticHamiltonian,
+    weights: np.ndarray,
+    dmm_depth: float = 1.0,
+) -> DetuningMapModulator | None:
+    """Build a DMM encoding MWIS vertex weights as per-atom detuning weights.
+
+    For MWIS with positive vertex weights ``w_i``, the QoolQit/Pasqal encoding
+    uses normalized DMM weights:
+
+        epsilon_i = 1 - w_i / w_max
+
+    where ``w_max = max(w_i)``.  This ensures that the highest-weight vertex
+    receives zero additional detuning (epsilon=1 → full DMM contribution
+    relative to the global detuning), while lower-weight vertices receive
+    proportionally more DMM detuning to compensate for their lower reward.
+
+    The DMM waveform is a negative constant (DMM detunings are ≤ 0).
+
+    Arguments:
+        h: the canonical Hamiltonian (linear terms should encode -w_i).
+        weights: the original MWIS vertex weights (positive).
+        dmm_depth: the DMM waveform amplitude (must be ≤ 0 after sign convention).
+
+    Returns None if weights are trivially uniform (no DMM needed).
+    """
+    weights = np.asarray(weights, dtype=float)
+    w_max = float(weights.max())
+    if w_max <= 0:
+        return None
+    eps = 1.0 - weights / w_max
+    if np.allclose(eps, 0.0):
+        return None  # uniform weights: no DMM needed
+    weight_dict = {i: float(eps[i]) for i in range(len(eps))}
+    wf = ConstantWaveform(4.0, -abs(dmm_depth))
+    return DetuningMapModulator(waveform=wf, weights=weight_dict)
+
+
 def local_detuning_dmm(
     h: BinaryQuadraticHamiltonian,
     dmm_depth: float = 1.0,
 ) -> DetuningMapModulator | None:
-    """Build a DMM encoding the linear terms h_i as per-atom detuning weights.
+    """Build a DMM encoding the linear terms of a general BinaryQuadraticHamiltonian.
 
-    The DMM applies a *negative* detuning weighted by epsilon_i in [0,1].  We map
-    the linear coefficients to weights proportional to their magnitude.  Returns
-    None if there are no meaningful linear terms (so no DMM is needed).
+    .. warning::
+
+        This generic mapping uses ``abs(linear) / max(abs(linear))`` and is NOT
+        a physically justified encoding for arbitrary QUBO problems.  It is
+        retained for backward compatibility with non-MWIS experiments.
+
+    For MWIS problems, use :func:`build_mwis_dmm` instead, which implements the
+    correct ``epsilon_i = 1 - w_i / w_max`` mapping.
+
+    Raises ``NotImplementedError`` if the linear terms have mixed signs (which
+    cannot be justified by this generic mapping).
     """
     lin = h.linear.copy()
     if np.allclose(lin, 0.0):
         return None
-    # weights in [0,1]; map magnitude. Negative linear terms (rewards) get full weight.
+    # Reject mixed-sign linear terms: the generic abs-mapping is not justified
+    if np.any(lin > 0) and np.any(lin < 0):
+        raise NotImplementedError(
+            "local_detuning_dmm cannot encode mixed-sign linear terms. "
+            "For MWIS, use build_mwis_dmm with explicit vertex weights."
+        )
     w = np.abs(lin)
     if w.max() <= 0:
         return None
     weights = (w / w.max()).tolist()
     weights = {i: float(wi) for i, wi in enumerate(weights)}
-    # negative waveform
-    wf = ConstantWaveform(4.0, -dmm_depth)
+    wf = ConstantWaveform(4.0, -abs(dmm_depth))
     return DetuningMapModulator(waveform=wf, weights=weights)
 
 
@@ -181,10 +273,29 @@ def build_program(
     amp_max: float = 1.5,
     det_max: float = 5.0,
     use_dmm: bool = True,
+    schedule: str = "linear",
+    mwis_weights: np.ndarray | None = None,
 ) -> QuantumProgram:
-    """Assemble a QuantumProgram from a Hamiltonian and an embedding."""
-    dmm = local_detuning_dmm(h) if use_dmm else None
-    drive = build_adiabatic_drive(duration=duration, amp_max=amp_max, det_max=det_max, dmm=dmm)
+    """Assemble a QuantumProgram from a Hamiltonian and an embedding.
+
+    Arguments:
+        mwis_weights: if provided, use the correct MWIS DMM encoding
+            (``epsilon_i = 1 - w_i / w_max``).  If None and use_dmm=True,
+            falls back to the generic ``local_detuning_dmm``.
+        schedule: control schedule type (``"linear"``, ``"blackman"``,
+            ``"ramp_flat"``).
+    """
+    if use_dmm:
+        if mwis_weights is not None:
+            dmm = build_mwis_dmm(h, mwis_weights)
+        else:
+            dmm = local_detuning_dmm(h)
+    else:
+        dmm = None
+    drive = build_adiabatic_drive(
+        duration=duration, amp_max=amp_max, det_max=det_max,
+        dmm=dmm, schedule=schedule,
+    )
     return QuantumProgram(register=embedding.register, drive=drive)
 
 
@@ -280,8 +391,125 @@ def emulate_program(
                                 wall_clock_s=time.time() - t0, failure_reason=repr(e))
 
 
+# --------------------------------------------------------------------------- #
+# Terminal encoding validation
+# --------------------------------------------------------------------------- #
+@dataclass
+class TerminalEncodingReport:
+    """Result of validating that the physical program's terminal Hamiltonian
+    preserves the intended classical objective up to an affine transformation."""
+    valid: bool
+    affine_scale: float
+    affine_shift: float
+    max_residual: float
+    ground_state_agreement: bool
+    rank_correlation: float
+    n_states: int
+    details: dict = field(default_factory=dict)
+
+
+def validate_terminal_encoding(
+    h: BinaryQuadraticHamiltonian,
+    embedding: EmbeddingResult,
+    mwis_weights: np.ndarray | None = None,
+    det_max: float = 5.0,
+    dmm_depth: float = 1.0,
+) -> TerminalEncodingReport:
+    """Check that the terminal encoded Hamiltonian preserves the classical objective.
+
+    At the terminal point of the adiabatic schedule:
+        Ω = 0, Δ = +det_max, DMM at its full negative value
+
+    The effective diagonal energy for each computational basis state x is:
+
+        E(x) = Δ * Σx_i  +  DMM * Σ(epsilon_i * x_i)  +  Σ J_ij * n_i * n_j
+
+    where n_i = x_i (Rydberg occupation) and J_ij = C6 / r_ij^6 (realized interactions).
+
+    For MWIS, the target classical objective is:
+        E_target(x) = -Σ w_i x_i + U Σ_{(i,j)∈E} x_i x_j
+
+    We verify that the terminal encoded diagonal ordering matches the target
+    ordering up to an affine transformation (scale > 0, shift).
+    """
+    from scipy.stats import spearmanr
+
+    n = h.n
+    if n > 16:
+        # sample states for large n
+        rng = np.random.default_rng(42)
+        n_states = min(256, 2**n)
+        idx = rng.choice(2**n, size=n_states, replace=False)
+        bits = ((idx[:, None] >> np.arange(n)) & 1).astype(float)
+    else:
+        bits = ((np.arange(2**n)[:, None] >> np.arange(n)) & 1).astype(float)
+
+    # Target classical energies
+    E_target = h.energy(bits)
+
+    # Terminal encoded energies: Δ * n_ryd + DMM * Σ(eps_i * x_i) + Σ J_ij n_i n_j
+    # At terminal: Δ = +det_max (positive, favoring |1>), DMM = -|dmm_depth|
+    realized = embedding.realized_interactions
+    n_ryd = bits.sum(axis=1)
+    interaction_term = np.zeros(len(bits))
+    for i in range(n):
+        for j in range(i + 1, n):
+            if realized[i, j] != 0:
+                interaction_term += realized[i, j] * bits[:, i] * bits[:, j]
+
+    if mwis_weights is not None:
+        w_max = float(np.max(mwis_weights))
+        eps = 1.0 - np.asarray(mwis_weights, dtype=float) / w_max
+        dmm_term = -abs(dmm_depth) * (bits * eps).sum(axis=1)
+    else:
+        lin = h.linear.copy()
+        if np.any(lin > 0) and np.any(lin < 0):
+            return TerminalEncodingReport(
+                valid=False, affine_scale=0, affine_shift=0, max_residual=np.inf,
+                ground_state_agreement=False, rank_correlation=0, n_states=len(bits),
+                details={"error": "mixed-sign linear terms not supported"})
+        w = np.abs(lin)
+        if w.max() > 0:
+            eps = w / w.max()
+        else:
+            eps = np.zeros(n)
+        dmm_term = -abs(dmm_depth) * (bits * eps).sum(axis=1)
+
+    E_encoded = det_max * n_ryd + dmm_term + interaction_term
+
+    # Best affine fit: E_encoded ≈ a * E_target + b
+    A = np.column_stack([E_target, np.ones_like(E_target)])
+    coef, *_ = np.linalg.lstsq(A, E_encoded, rcond=None)
+    a, b = float(coef[0]), float(coef[1])
+    if a <= 0:
+        a = abs(a) if a != 0 else 1e-12
+    residual = float(np.max(np.abs(E_encoded - (a * E_target + b))))
+
+    # Ground-state agreement
+    e0_target = float(E_target.min())
+    e0_enc = float(E_encoded.min())
+    gs_target = np.isclose(E_target, e0_target, atol=TOL_GROUND_STATE, rtol=0.0)
+    gs_enc = np.isclose(E_encoded, e0_enc, atol=TOL_GROUND_STATE, rtol=0.0)
+    gs_agreement = bool(np.array_equal(gs_target, gs_enc))
+
+    # Rank correlation
+    sp = spearmanr(E_target, E_encoded)
+    rho = float(sp.correlation) if sp.correlation is not np.nan else 0.0
+
+    valid = (a > 0) and (residual < TOL_AFFINE_FIT * max(1.0, abs(e0_target))) and gs_agreement
+
+    return TerminalEncodingReport(
+        valid=valid, affine_scale=a, affine_shift=b, max_residual=residual,
+        ground_state_agreement=gs_agreement, rank_correlation=rho,
+        n_states=len(bits),
+        details={"e0_target": e0_target, "e0_encoded": e0_enc},
+    )
+
+
 __all__ = [
     "QOOLQIT_VERSION", "EmbeddingResult", "target_interaction_matrix", "run_embedder",
-    "build_adiabatic_drive", "local_detuning_dmm", "build_program",
+    "build_adiabatic_drive", "build_mwis_dmm", "local_detuning_dmm", "build_program",
     "CompilationOutcome", "compile_program", "EmulationOutcome", "emulate_program",
+    "validate_terminal_encoding", "TerminalEncodingReport",
+    "TOL_ENERGY_EQUIVALENCE", "TOL_COORD_DUPLICATE", "TOL_GROUND_STATE", "TOL_AFFINE_FIT",
 ]

@@ -1,0 +1,47 @@
+# Smoke experiment configuration — fast CI/verification mode
+# Purpose: quick reproduction, reviewer verification, CI
+
+experiment_id: smoke_v1
+qoolqit_version: "1.4.0"
+
+problems:
+  - id: path_n5_seed42
+    type: mwis_path
+    n: 5
+    seed: 42
+
+hamiltonian:
+  n_representations: 3
+  transform: mwis_penalty
+
+embedding:
+  families:
+    - interaction
+    - spring
+    - blade
+  n_per_family: 1
+
+control:
+  schedule: linear
+  duration: 4.0
+  amp_max: 1.5
+  det_max: 5.0
+
+execution:
+  num_shots: 200
+  n_replicates: 1
+  device: AnalogDeviceWithDMM
+  profile: max_energy
+
+robustness:
+  enabled: false
+  sigma: 0.02
+  samples: 0
+
+baseline:
+  hamiltonian: first
+  embedding: first
+  schedule: linear
+
+seeds:
+  base: 42
