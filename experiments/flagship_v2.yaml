@@ -1,0 +1,72 @@
+# Flagship experiment configuration v1
+# Frozen before running official results. Do not tune after inspection.
+# If a bug requires rerunning, increment to flagship_v2.yaml.
+
+experiment_id: flagship_v2
+qoolqit_version: "1.4.0"
+
+problems:
+  - id: path_n5_seed42
+    type: mwis_path
+    n: 5
+    seed: 42
+  - id: path_n6_seed1
+    type: mwis_path
+    n: 6
+    seed: 1
+  - id: cycle_n6_seed42
+    type: mwis_cycle
+    n: 6
+    seed: 42
+  - id: grid_2x3_seed42
+    type: mwis_grid
+    rows: 2
+    cols: 3
+    seed: 42
+  - id: geometric_n6_seed1
+    type: mwis_random_geometric
+    n: 6
+    radius: 0.7
+    seed: 1
+  - id: erdos_n6_seed2
+    type: mwis_erdos_renyi
+    n: 6
+    p: 0.4
+    seed: 2
+
+hamiltonian:
+  n_representations: 5
+  transform: mwis_penalty
+  U_values: null  # auto-generate from weights
+
+embedding:
+  families:
+    - interaction
+    - spring
+    - blade
+  n_per_family: 3
+
+control:
+  schedule: linear
+  duration: 4.0
+  amp_max: 1.5
+  det_max: 5.0
+
+execution:
+  num_shots: 1000
+  n_replicates: 3
+  device: AnalogDeviceWithDMM
+  profile: max_energy
+
+robustness:
+  enabled: true
+  sigma: 0.02
+  samples: 3
+
+baseline:
+  hamiltonian: first  # first U value
+  embedding: first    # first embedder family
+  schedule: linear
+
+seeds:
+  base: 42

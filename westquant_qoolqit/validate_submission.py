@@ -92,8 +92,39 @@ def validate_submission() -> bool:
                 print(f"  [FAIL] QoolQit version: {qoolqit_version} (expected 1.4.0)")
                 all_ok = False
 
+    # Check for terminal encoding validity in raw cells
+    print("\n6. Terminal encoding validity:")
+    if latest_file.exists():
+        experiment_id = latest_file.read_text().strip()
+        raw_file = REPO_ROOT / "results" / "runs" / experiment_id / "raw" / "cells.jsonl"
+        if raw_file.exists():
+            import json as json_mod
+            total_cells = 0
+            invalid_terminal = 0
+            emulated_with_invalid = 0
+            for line in raw_file.read_text().strip().split("\n"):
+                if line:
+                    rec = json_mod.loads(line)
+                    total_cells += 1
+                    if rec.get("terminal_encoding_valid") is False:
+                        invalid_terminal += 1
+                        # Check if this invalid cell was still emulated
+                        if rec.get("solution_probability") is not None:
+                            emulated_with_invalid += 1
+            if total_cells > 0:
+                if emulated_with_invalid > 0:
+                    print(f"  [FAIL] {emulated_with_invalid} cells with invalid terminal encoding were emulated")
+                    all_ok = False
+                elif invalid_terminal > 0:
+                    print(f"  [OK] {invalid_terminal}/{total_cells} cells have invalid terminal encoding (correctly excluded from emulation)")
+                else:
+                    print(f"  [OK] All {total_cells} cells have valid terminal encoding")
+            else:
+                print("  [FAIL] No cells found in raw data")
+                all_ok = False
+
     # Check for NaNs in metrics
-    print("\n6. No NaNs in metrics:")
+    print("\n7. No NaNs in metrics:")
     if latest_file.exists():
         experiment_id = latest_file.read_text().strip()
         metrics_file = REPO_ROOT / "results" / "runs" / experiment_id / "processed" / "report_metrics.json"
@@ -106,7 +137,7 @@ def validate_submission() -> bool:
             print("  [OK] No NaNs found")
 
     # Check tests
-    print("\n7. Tests:")
+    print("\n8. Tests:")
     import subprocess
     result = subprocess.run(
         [sys.executable, "-m", "pytest", "tests/", "-q"],

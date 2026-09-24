@@ -5,11 +5,11 @@
   "n_embedding_representations": 3,
   "n_cells_total": 9,
   "n_replicates": 1,
-  "eta2_H_median": 0.14561940135459894,
-  "eta2_R_median": 0.21837448110115798,
-  "eta2_HxR_median": 0.6360061175442427,
-  "median_improvement": 0.0,
-  "fraction_improved": 0.0,
-  "elapsed_seconds": 8.491353034973145,
+  "eta2_H_median": 0.30780141843971637,
+  "eta2_R_median": 0.005673758865248217,
+  "eta2_HxR_median": 0.6865248226950356,
+  "median_improvement": 1.3333333333333337,
+  "fraction_improved": 1.0,
+  "elapsed_seconds": 7.38149094581604,
   "qoolqit_version": "1.4.0"
 }

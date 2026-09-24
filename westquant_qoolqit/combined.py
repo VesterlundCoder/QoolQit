@@ -151,19 +151,91 @@ class CombinedResult:
         }
 
     def best_cell(self, metric: str = "ground_state_probability") -> FactorialCell | None:
-        """Return the best cell by the given metric (ignoring None/NaN)."""
-        valid = [c for c in self.cells
-                 if getattr(c, metric, None) is not None
-                 and not np.isnan(getattr(c, metric, None))]
-        if not valid:
+        """Return the best cell by mean metric over replicates (avoids winner's curse).
+
+        Computes the mean of the metric over all replicates for each (H, R) pair,
+        then returns the cell from the winning (H, R) pair. This avoids the
+        winner's curse of selecting the best individual replicate.
+        """
+        # Group by (H, R) and compute mean
+        from collections import defaultdict
+        cell_means: dict[tuple[str, str], tuple[float, list[FactorialCell]]] = {}
+        groups: dict[tuple[str, str], list[FactorialCell]] = defaultdict(list)
+        for c in self.cells:
+            val = getattr(c, metric, None)
+            if val is not None and not np.isnan(val):
+                groups[(c.hamiltonian_id, c.embedder)].append(c)
+        if not groups:
             return None
-        return max(valid, key=lambda c: getattr(c, metric))
+        best_key = None
+        best_mean = -np.inf
+        for key, cells in groups.items():
+            vals = [getattr(c, metric) for c in cells]
+            mean_val = float(np.mean(vals))
+            if mean_val > best_mean:
+                best_mean = mean_val
+                best_key = key
+        if best_key is None:
+            return None
+        # Return the first replicate of the best (H, R) pair
+        return groups[best_key][0]
 
     def baseline_cell(self, metric: str = "ground_state_probability") -> FactorialCell | None:
-        """Return the baseline cell (first Hamiltonian, first embedder, first replicate)."""
+        """Return the baseline cell (first Hamiltonian, first embedder).
+
+        The baseline is the first (H, R) pair, using the mean over its replicates
+        to avoid comparing against a single lucky replicate.
+        """
         if not self.cells:
             return None
-        return self.cells[0]
+        # Find the first (H, R) pair's cells
+        first_h = self.cells[0].hamiltonian_id
+        first_r = self.cells[0].embedder
+        baseline_cells = [c for c in self.cells
+                          if c.hamiltonian_id == first_h and c.embedder == first_r]
+        return baseline_cells[0] if baseline_cells else self.cells[0]
+
+    def best_vs_baseline(self, metric: str = "ground_state_probability") -> dict:
+        """Compare best (H,R) mean vs baseline (H,R) mean, with Wilson CI.
+
+        Uses pooled counts across replicates for the Wilson interval.
+        """
+        from collections import defaultdict
+        groups: dict[tuple[str, str], list[FactorialCell]] = defaultdict(list)
+        for c in self.cells:
+            val = getattr(c, metric, None)
+            if val is not None and not np.isnan(val):
+                groups[(c.hamiltonian_id, c.embedder)].append(c)
+        if not groups:
+            return {}
+        # Compute mean per (H, R)
+        means = {}
+        for key, cells in groups.items():
+            vals = [getattr(c, metric) for c in cells]
+            means[key] = float(np.mean(vals))
+        best_key = max(means, key=means.get)
+        baseline_key = (self.cells[0].hamiltonian_id, self.cells[0].embedder)
+        best_mean = means[best_key]
+        baseline_mean = means.get(baseline_key, 0.0)
+        # When baseline is 0, relative improvement is undefined.
+        # Report absolute improvement and whether baseline succeeded.
+        if baseline_mean > 0:
+            relative = (best_mean - baseline_mean) / baseline_mean
+        elif best_mean > 0:
+            relative = None  # baseline=0, best>0 → relative undefined
+        else:
+            relative = 0.0
+        improvement = {
+            "absolute": best_mean - baseline_mean,
+            "relative": relative,
+            "best_key": best_key,
+            "baseline_key": baseline_key,
+            "best_mean": best_mean,
+            "baseline_mean": baseline_mean,
+            "baseline_success": baseline_mean > 0,
+            "best_success": best_mean > 0,
+        }
+        return improvement
 
 
 def combined_search(
@@ -179,7 +251,12 @@ def combined_search(
     run_emulation: bool = True,
     run_robustness: bool = True,
     robustness_samples: int = 3,
+    robustness_sigma: float = 0.02,
     schedule: str = "linear",
+    duration: float = 4.0,
+    amp_max: float = 1.5,
+    det_max: float = 5.0,
+    profile: str = "max_energy",
     validate_terminal: bool = True,
 ) -> CombinedResult:
     """Run the combined H x R factorial search with replicates.
@@ -192,6 +269,11 @@ def combined_search(
     Arguments:
         n_replicates: number of stochastic replicates per (H, R) cell.
         schedule: control schedule (``"linear"``, ``"blackman"``, ``"ramp_flat"``).
+        duration: adiabatic drive duration (seconds).
+        amp_max: maximum Rabi amplitude.
+        det_max: maximum global detuning (also sets DMM amplitude = -det_max).
+        profile: QoolQit compilation profile (``"max_energy"``, ``"default"``).
+        robustness_sigma: coordinate perturbation sigma for robustness tests.
         validate_terminal: if True, validate terminal encoding for each (H, R).
     """
     device = device or AnalogDeviceWithDMM()
@@ -264,6 +346,7 @@ def combined_search(
                     term_report = validate_terminal_encoding(
                         hc.hamiltonian, emb_val,
                         mwis_weights=mwis_weights if mwis_weights is not None else None,
+                        det_max=det_max,
                     )
                     terminal_valid = term_report.valid
                 except Exception:
@@ -290,6 +373,12 @@ def combined_search(
                        "transform": hc.transform_name,
                        "U": hc.transform_parameters.get("U"),
                        "terminal_encoding_valid": terminal_valid}
+                # Skip emulation if terminal encoding is invalid
+                if validate_terminal and terminal_valid is False:
+                    rec["error"] = "terminal_encoding_invalid"
+                    cells.append(cell)
+                    records.append(rec)
+                    continue
                 try:
                     emb = run_embedder(hc.hamiltonian, method=ec.embedder_name,
                                        config=ec.embedder_config, seed=ec.seed,
@@ -304,10 +393,12 @@ def combined_search(
                     rec["logical_fidelity_rho"] = lf.energy_rank_correlation
                     # compile + emulate
                     comp = None
-                    for use_dmm, dev, prof in [(True, device, "max_energy"),
-                                               (False, device, "max_energy")]:
+                    for use_dmm, dev, prof in [(True, device, profile),
+                                               (False, device, profile)]:
                         prog = build_program(hc.hamiltonian, emb, use_dmm=use_dmm,
                                              schedule=schedule,
+                                             duration=duration, amp_max=amp_max,
+                                             det_max=det_max,
                                              mwis_weights=mwis_weights)
                         comp = compile_program(prog, device=dev, profile=prof)
                         if comp.success:
@@ -343,7 +434,7 @@ def combined_search(
                         from .common.metrics import interaction_rank_correlation
                         rcs = []
                         for r in range(robustness_samples):
-                            noisy = perturb_coordinates(emb.coords, 0.02,
+                            noisy = perturb_coordinates(emb.coords, robustness_sigma,
                                                         seed=rep_seed + r)
                             reg = Register.from_coordinates(noisy.tolist())
                             rcs.append(interaction_rank_correlation(

@@ -18,14 +18,14 @@
       "blade"
     ],
     "variance_decomposition": {
-      "ss_H": 0.00740555555555555,
-      "ss_R": 0.011105555555555558,
-      "ss_HxR": 0.03234444444444444,
+      "ss_H": 0.0001446666666666667,
+      "ss_R": 2.666666666666662e-06,
+      "ss_HxR": 0.00032266666666666674,
       "ss_residual": 0.0,
-      "ss_total": 0.050855555555555564,
-      "eta2_H": 0.14561940135459894,
-      "eta2_R": 0.21837448110115798,
-      "eta2_HxR": 0.6360061175442427,
+      "ss_total": 0.00047000000000000004,
+      "eta2_H": 0.30780141843971637,
+      "eta2_R": 0.005673758865248217,
+      "eta2_HxR": 0.6865248226950356,
       "eta2_residual": 0.0,
       "df_H": 2,
       "df_R": 2,
@@ -34,19 +34,19 @@
       "n_cells": 9,
       "n_replicates": 1
     },
-    "best_cell": {
-      "hamiltonian_id": "H_mwis_U5.543",
-      "embedder": "R_int_s42_r0",
-      "p_opt": 0.255
-    },
-    "baseline_cell": {
-      "hamiltonian_id": "H_mwis_U5.543",
-      "embedder": "R_int_s42_r0",
-      "p_opt": 0.255
-    },
     "improvement": {
-      "absolute": 0.0,
-      "relative": 0.0
+      "absolute": 0.020000000000000004,
+      "relative": 1.3333333333333337,
+      "best_key": [
+        "H_mwis_U6.652",
+        "R_bld_s44_d4"
+      ],
+      "baseline_key": [
+        "H_mwis_U5.543",
+        "R_int_s42_r0"
+      ],
+      "best_mean": 0.035,
+      "baseline_mean": 0.015
     }
   }
 ]

@@ -5,7 +5,7 @@ from __future__ import annotations
 import numpy as np
 
 from ..common.types import BinaryQuadraticHamiltonian
-from ..common.equivalence import verify_equivalence
+from ..common.equivalence import EquivalenceClass, verify_equivalence
 from .transforms import (
     TransformResult, positive_scale, variable_permutation, bit_complement,
     mwis_penalty, mwis_penalty_family, mwis_penalty_safe_threshold,
@@ -18,12 +18,22 @@ from .result import HamiltonianCandidate
 def _make_candidate(tr: TransformResult, cid: str, original: BinaryQuadraticHamiltonian,
                     verify: bool = True) -> HamiltonianCandidate:
     verification = None
+    final_class = tr.equivalence_class
     if verify and tr.equivalence_class.value in ("EXACT_EQUIVALENT", "GROUND_STATE_EQUIVALENT"):
         verification = verify_equivalence(original, tr.hamiltonian,
                                           forward_map=tr.forward_map)
+        # Verification is authoritative: if the declared class doesn't match
+        # the verified class, downgrade to INVALID.
+        declared = tr.equivalence_class
+        verified_class = verification.classification
+        if declared == EquivalenceClass.EXACT_EQUIVALENT and verified_class != EquivalenceClass.EXACT_EQUIVALENT:
+            final_class = EquivalenceClass.INVALID
+        elif declared == EquivalenceClass.GROUND_STATE_EQUIVALENT and verified_class not in (
+                EquivalenceClass.EXACT_EQUIVALENT, EquivalenceClass.GROUND_STATE_EQUIVALENT):
+            final_class = EquivalenceClass.INVALID
     return HamiltonianCandidate(
         id=cid, hamiltonian=tr.hamiltonian, transform_name=tr.transform_name,
-        transform_parameters=tr.transform_parameters, equivalence_class=tr.equivalence_class,
+        transform_parameters=tr.transform_parameters, equivalence_class=final_class,
         forward_state_map=tr.forward_map, inverse_state_map=tr.inverse_map,
         proof_metadata=tr.proof_metadata, verification=verification,
         realizability=classify_realizability(tr.hamiltonian),

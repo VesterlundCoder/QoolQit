@@ -69,9 +69,28 @@ def run_experiment(config: dict, experiment_id: str) -> dict:
     num_shots = config["execution"]["num_shots"]
     n_replicates = config["execution"]["n_replicates"]
     schedule = config["control"]["schedule"]
+    duration = config["control"].get("duration", 4.0)
+    amp_max = config["control"].get("amp_max", 1.5)
+    det_max = config["control"].get("det_max", 5.0)
+    profile = config["execution"].get("profile", "max_energy")
+    device_name = config["execution"].get("device", "AnalogDeviceWithDMM")
     robustness_enabled = config.get("robustness", {}).get("enabled", False)
     robustness_samples = config.get("robustness", {}).get("samples", 0)
+    robustness_sigma = config.get("robustness", {}).get("sigma", 0.02)
     base_seed = config["seeds"]["base"]
+
+    # Verify QoolQit version matches config
+    import qoolqit
+    actual_version = qoolqit.__version__
+    expected_version = config.get("qoolqit_version", actual_version)
+    if actual_version != expected_version:
+        raise RuntimeError(
+            f"QoolQit version mismatch: config says {expected_version}, "
+            f"but installed version is {actual_version}")
+
+    # Select device from config
+    from qoolqit import AnalogDevice, AnalogDeviceWithDMM
+    device = AnalogDeviceWithDMM() if device_name == "AnalogDeviceWithDMM" else AnalogDevice()
 
     all_results = []
     all_records = []
@@ -87,16 +106,21 @@ def run_experiment(config: dict, experiment_id: str) -> dict:
             num_shots=num_shots,
             n_replicates=n_replicates,
             seed=base_seed,
+            device=device,
             run_emulation=True,
             run_robustness=robustness_enabled,
             robustness_samples=robustness_samples,
+            robustness_sigma=robustness_sigma,
             schedule=schedule,
+            duration=duration,
+            amp_max=amp_max,
+            det_max=det_max,
+            profile=profile,
         )
-        # Collect per-problem stats
+        # Collect per-problem stats using mean-over-replicates comparison
         mat = result.matrix("ground_state_probability")
         vd = result.variance_decomposition("ground_state_probability")
-        best = result.best_cell("ground_state_probability")
-        baseline = result.baseline_cell("ground_state_probability")
+        imp = result.best_vs_baseline("ground_state_probability")
         problem_result = {
             "problem_id": pspec["id"],
             "n_cells": len(result.cells),
@@ -104,30 +128,29 @@ def run_experiment(config: dict, experiment_id: str) -> dict:
             "embedder_ids": result.embedder_ids,
             "embedder_families": result.embedder_families,
             "variance_decomposition": vd,
-            "best_cell": {"hamiltonian_id": best.hamiltonian_id, "embedder": best.embedder,
-                          "p_opt": best.ground_state_probability} if best else None,
-            "baseline_cell": {"hamiltonian_id": baseline.hamiltonian_id,
-                              "embedder": baseline.embedder,
-                              "p_opt": baseline.ground_state_probability} if baseline else None,
+            "improvement": imp if imp else None,
         }
-        if best and baseline and best.ground_state_probability and baseline.ground_state_probability:
-            bp = best.ground_state_probability
-            bl = baseline.ground_state_probability
-            problem_result["improvement"] = {
-                "absolute": bp - bl,
-                "relative": (bp - bl) / bl if bl > 0 else 0.0,
-            }
         all_results.append(problem_result)
         all_records.extend(result.records)
 
     elapsed = time.time() - t0
 
     # Aggregate across problems
-    improvements = [r["improvement"]["relative"] for r in all_results
-                    if "improvement" in r and r["improvement"]["relative"] is not None]
+    absolute_improvements = [r["improvement"]["absolute"] for r in all_results
+                             if r.get("improvement")]
+    relative_improvements = [r["improvement"]["relative"] for r in all_results
+                             if r.get("improvement") and r["improvement"].get("relative") is not None]
+    baseline_successes = [r["improvement"]["baseline_success"] for r in all_results
+                          if r.get("improvement")]
+    best_successes = [r["improvement"]["best_success"] for r in all_results
+                      if r.get("improvement")]
     eta2_H_values = [r["variance_decomposition"].get("eta2_H", 0) for r in all_results]
     eta2_R_values = [r["variance_decomposition"].get("eta2_R", 0) for r in all_results]
     eta2_HxR_values = [r["variance_decomposition"].get("eta2_HxR", 0) for r in all_results]
+
+    # Fraction improved: best > baseline (including baseline=0, best>0)
+    n_improved = sum(1 for r in all_results
+                     if r.get("improvement") and r["improvement"]["absolute"] > 0)
 
     report_metrics = {
         "experiment_id": experiment_id,
@@ -139,10 +162,13 @@ def run_experiment(config: dict, experiment_id: str) -> dict:
         "eta2_H_median": float(np.median(eta2_H_values)) if eta2_H_values else 0.0,
         "eta2_R_median": float(np.median(eta2_R_values)) if eta2_R_values else 0.0,
         "eta2_HxR_median": float(np.median(eta2_HxR_values)) if eta2_HxR_values else 0.0,
-        "median_improvement": float(np.median(improvements)) if improvements else 0.0,
-        "fraction_improved": sum(1 for x in improvements if x > 0) / len(improvements) if improvements else 0.0,
+        "median_absolute_improvement": float(np.median(absolute_improvements)) if absolute_improvements else 0.0,
+        "median_relative_improvement": float(np.median(relative_improvements)) if relative_improvements else None,
+        "fraction_improved": n_improved / len(all_results) if all_results else 0.0,
+        "n_problems_baseline_zero": sum(1 for s in baseline_successes if not s),
+        "n_problems_best_success": sum(1 for s in best_successes if s),
         "elapsed_seconds": elapsed,
-        "qoolqit_version": config["qoolqit_version"],
+        "qoolqit_version": actual_version,
     }
 
     return {
@@ -214,19 +240,24 @@ def generate_figures(experiment_data: dict, run_dir: Path):
     per_problem = experiment_data["per_problem"]
     if per_problem:
         pp = per_problem[0]
-        # Reconstruct matrix from records
+        # Reconstruct matrix from records, using MEAN over replicates
         h_ids = pp["hamiltonian_ids"]
         r_ids = pp["embedder_ids"]
         mat = np.full((len(h_ids), len(r_ids)), np.nan)
         hidx = {h: i for i, h in enumerate(h_ids)}
         ridx = {r: i for i, r in enumerate(r_ids)}
+        # Collect all values per (H, R) cell
+        cell_values: dict[tuple[str, str], list[float]] = {}
         for rec in experiment_data["records"]:
             if rec.get("problem_id", pp["problem_id"]) == pp["problem_id"]:
                 if "solution_probability" in rec:
                     h = rec["hamiltonian_id"]
                     r = rec["embedder"]
                     if h in hidx and r in ridx:
-                        mat[hidx[h], ridx[r]] = rec["solution_probability"]
+                        cell_values.setdefault((h, r), []).append(rec["solution_probability"])
+        # Compute mean per cell
+        for (h, r), vals in cell_values.items():
+            mat[hidx[h], ridx[r]] = float(np.mean(vals))
         if not np.all(np.isnan(mat)):
             fig, ax = plt.subplots(figsize=(8, 6))
             im = ax.imshow(mat, cmap="viridis", aspect="auto")
@@ -267,8 +298,8 @@ def generate_figures(experiment_data: dict, run_dir: Path):
     improvements = []
     labels = []
     for pp in per_problem:
-        if "improvement" in pp and pp["improvement"]["relative"] is not None:
-            improvements.append(pp["improvement"]["relative"])
+        if pp.get("improvement") and pp["improvement"].get("absolute") is not None:
+            improvements.append(pp["improvement"]["absolute"])
             labels.append(pp["problem_id"])
     if improvements:
         fig, ax = plt.subplots(figsize=(10, 5))
@@ -329,8 +360,15 @@ def main():
     print(f"η²(H)  median: {rm['eta2_H_median']:.1%}")
     print(f"η²(R)  median: {rm['eta2_R_median']:.1%}")
     print(f"η²(H×R) median: {rm['eta2_HxR_median']:.1%}")
-    print(f"Median improvement: {rm['median_improvement']:.1%}")
+    print(f"Median absolute improvement: {rm['median_absolute_improvement']:.4f}")
+    rel = rm.get('median_relative_improvement')
+    if rel is not None:
+        print(f"Median relative improvement: {rel:.1%}")
+    else:
+        print(f"Median relative improvement: N/A (baseline=0 for some problems)")
     print(f"Fraction improved: {rm['fraction_improved']:.1%}")
+    print(f"Problems with baseline=0: {rm['n_problems_baseline_zero']}/{rm['n_problems']}")
+    print(f"Problems where best succeeds: {rm['n_problems_best_success']}/{rm['n_problems']}")
     print(f"Elapsed: {rm['elapsed_seconds']:.1f}s")
 
 

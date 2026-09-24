@@ -93,11 +93,24 @@ class TestMWISDMM:
             quadratic=np.zeros((4, 4)),
             constant=0.0,
         )
-        dmm = build_mwis_dmm(h, weights)
+        dmm = build_mwis_dmm(h, weights, det_max=5.0)
         assert dmm is not None
         # Check weights match epsilon_i
         actual_weights = np.array([dmm.weights[i] for i in range(4)])
         np.testing.assert_allclose(actual_weights, expected_eps, atol=1e-9)
+
+    def test_mwis_dmm_amplitude_equals_neg_det_max(self):
+        """DMM waveform amplitude should be -det_max (ΔDMM = -δ_f)."""
+        weights = np.array([1.0, 3.0, 5.0, 2.0])
+        h = BinaryQuadraticHamiltonian(
+            linear=-weights, quadratic=np.zeros((4, 4)), constant=0.0,
+        )
+        dmm = build_mwis_dmm(h, weights, det_max=5.0)
+        assert dmm is not None
+        # The DMM waveform should have amplitude -det_max = -5.0
+        pulser_wf = dmm.waveform._to_pulser(4.0)
+        assert abs(float(pulser_wf[0]) - (-5.0)) < 1e-9, (
+            f"DMM amplitude should be -det_max=-5.0, got {float(pulser_wf[0])}")
 
     def test_mwis_dmm_uniform_weights_returns_none(self):
         """Uniform weights should return None (no DMM needed)."""
@@ -196,24 +209,23 @@ class TestEmbedderDiversity:
 # P0: Terminal encoding preserves MWIS ground state
 # --------------------------------------------------------------------------- #
 class TestTerminalEncoding:
-    @pytest.mark.parametrize("n", [4, 5])
+    @pytest.mark.parametrize("n", [4, 5, 6])
     def test_terminal_encoding_preserves_mwis_ground_state(self, n):
-        """Terminal encoded Hamiltonian should preserve MWIS ground state.
+        """Terminal encoded Hamiltonian MUST preserve MWIS ground state.
 
-        This is a known challenging requirement. The terminal encoding depends
-        on the balance between detuning, DMM depth, and interaction strengths.
-        We report the validation result; if it fails, it indicates the physical
-        parameters need tuning for this problem instance.
+        This is a hard physical correctness test. If it fails, the DMM encoding
+        or terminal validation is wrong, and CI must be red.
         """
         h, info = mwis_path(n=n, seed=42)
         emb = run_embedder(h, method="interaction", seed=42)
         report = validate_terminal_encoding(h, emb, mwis_weights=info["weights"])
-        # Report the result — this is a known area requiring parameter tuning
-        if not report.ground_state_agreement:
-            pytest.skip(
-                f"Terminal encoding does not preserve MWIS ground state for n={n} "
-                f"(rank_corr={report.rank_correlation:.3f}). "
-                f"This indicates the physical parameters need tuning.")
+        assert report.valid, (
+            f"Terminal encoding invalid for n={n}: "
+            f"gs_agree={report.ground_state_agreement}, "
+            f"rank_corr={report.rank_correlation:.3f}, "
+            f"residual={report.max_residual:.6f}")
+        assert report.ground_state_agreement, (
+            f"Terminal encoding does not preserve MWIS ground state for n={n}")
 
 
     def test_terminal_encoding_runs_without_error(self):

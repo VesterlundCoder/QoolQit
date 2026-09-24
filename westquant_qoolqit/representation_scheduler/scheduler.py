@@ -73,6 +73,7 @@ class RepresentationScheduler:
         run_robustness: bool = True,
         robustness_sigma: float = 0.02,
         robustness_samples: int = 5,
+        mwis_weights: np.ndarray | None = None,
     ) -> SchedulerResult:
         device = device or self.device or AnalogDevice()
         num_shots = num_shots or self.num_shots
@@ -101,7 +102,7 @@ class RepresentationScheduler:
 
         # ---- Stage 1: logical fidelity on top fraction ----
         frob = [s.frobenius_error if s.frobenius_error is not None else 1e9 for s in scores]
-        keep1 = halve_indices(frob, self.halving.stage0_keep, minimize=True)
+        keep1 = halve_indices(frob, self.halving.stage1_keep, minimize=True)
         for i in keep1:
             s = scores[i]
             if s.embedding is None:
@@ -130,7 +131,8 @@ class RepresentationScheduler:
                                        (False, device, "max_energy"),
                                        (True, dmm_device, "default")]:
                 try:
-                    prog = build_program(problem, s.embedding, use_dmm=use_dmm)
+                    prog = build_program(problem, s.embedding, use_dmm=use_dmm,
+                                          mwis_weights=mwis_weights)
                     comp = compile_program(prog, device=dev, profile=prof)
                     if comp.success:
                         break

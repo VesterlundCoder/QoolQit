@@ -115,7 +115,7 @@ QoolQit/
 │   ├── project_A_representation_scheduler.ipynb
 │   └── project_B_hamiltonian_explorer.ipynb
 │
-├── tests/                             ← 22 pytest tests
+├── tests/                             ← 59 pytest tests
 │   ├── test_algebra.py                ← QUBO round trips, scaling, permutation, bit-complement
 │   ├── test_search.py                 ← equivalence, Pareto, robustness, reproducibility
 │   └── test_qoolqit.py                ← QoolQit integration (embedding, compilation, emulation)
@@ -302,9 +302,9 @@ computational verification.
 
 ## Key results
 
-**Flagship experiment:** 6 MWIS problems × 5 Hamiltonian representations × 9 embedding representations × 3 replicates = 810 cells, 1000 shots per emulation.
+**Flagship experiment (v2):** 6 MWIS problems × 5 Hamiltonian representations × 9 embedding representations × 3 replicates = 810 cells, 1000 shots per emulation. Terminal encoding validation excludes invalid cells from emulation.
 
-Source: `results/runs/flagship_v1/processed/report_metrics.json`
+Source: `results/runs/flagship_v2/processed/report_metrics.json`
 
 | Metric | Value |
 |--------|-------|
@@ -313,30 +313,43 @@ Source: `results/runs/flagship_v1/processed/report_metrics.json`
 | Embedding representations per problem | 9 (3 interaction + 3 spring + 3 blade) |
 | Replicates per cell | 3 |
 | Total factorial cells | 810 |
-| **η²(H) — Hamiltonian main effect** | **7.2%** (median) |
-| **η²(R) — Embedding main effect** | **33.1%** (median) |
-| **η²(H×R) — Interaction effect** | **47.7%** (median) |
-| **Median improvement over baseline** | **65.9%** |
-| **Fraction of problems improved** | **100%** (6/6) |
+| Cells with valid terminal encoding | 339/810 (invalid cells excluded from emulation) |
+| **η²(H) — Hamiltonian main effect** | **7.6%** (median) |
+| **η²(R) — Embedding main effect** | **10.4%** (median) |
+| **η²(H×R) — Interaction effect** | **33.3%** (median) |
+| Median absolute improvement | 0.0047 |
+| Fraction of problems improved | **83.3%** (5/6) |
+| Problems where baseline p_opt = 0 | 5/6 |
+| Problems where best p_opt > 0 | **6/6** |
 | QoolQit version | 1.4.0 |
 
-**Finding:** The H×R interaction is the dominant or near-dominant effect in 4 of 6
-problems. This directly motivates joint representation search: neither the
-Hamiltonian alone nor the embedding alone determines performance — it is their
-*interaction* that matters. The embedding main effect is also substantial (33.1%),
-while the Hamiltonian main effect is small (7.2%), suggesting that within the MWIS
-penalty family, the choice of U matters less than the physical embedding.
+**Finding:** The H×R interaction is the dominant effect (median 33.3%), directly
+motivating joint representation search. Neither the Hamiltonian alone nor the
+embedding alone determines performance — it is their *interaction* that matters.
 
-Per-problem breakdown (source: `results/runs/flagship_v1/processed/summary.json`):
+A key practical finding: for 5 of 6 problems, the baseline representation (first
+Hamiltonian, first embedding) produces **zero** ground-state probability, while
+the search finds representations that produce non-zero probability. This is a
+stronger result than a percentage improvement — the search enables solutions
+that the default representation cannot reach at all.
 
-| Problem | η²(H) | η²(R) | η²(H×R) | Improvement |
-|---------|-------|-------|---------|-------------|
-| path_n5 | 8.3% | 35.4% | 54.3% | 5.1% |
-| path_n6 | 0.4% | 72.9% | 24.4% | 0.0% |
-| cycle_n6 | 6.0% | 32.8% | 59.4% | 51.5% |
-| grid_2x3 | 12.2% | 32.3% | 53.5% | 65.9% |
-| geometric_n6 | 5.2% | 28.2% | 21.2% | 141.2% |
-| erdos_n6 | 17.9% | 33.4% | 41.8% | 188.0% |
+Per-problem breakdown (source: `results/runs/flagship_v2/processed/summary.json`):
+
+| Problem | η²(H) | η²(R) | η²(H×R) | Baseline p_opt | Best p_opt |
+|---------|-------|-------|---------|----------------|------------|
+| path_n5 | 9.1% | 38.1% | 31.7% | 0.0347 | 0.0347 |
+| path_n6 | 7.3% | 4.8% | 34.8% | 0.0000 | 0.0033 |
+| cycle_n6 | 8.0% | 13.3% | 44.2% | 0.0000 | 0.0140 |
+| grid_2x3 | 13.0% | 9.8% | 31.9% | 0.0000 | 0.0060 |
+| geometric_n6 | 0.8% | 3.2% | 41.8% | 0.0000 | 0.0067 |
+| erdos_n6 | 2.1% | 11.1% | 24.7% | 0.0000 | 0.0033 |
+
+**Note on improvement metric:** Relative improvement is undefined when the
+baseline probability is zero. We report absolute improvement and the fraction
+of problems where the search finds a non-zero solution. The path_n5 problem is
+the only one where the baseline already succeeds, and the search does not
+improve on it — the baseline representation is already near-optimal for that
+instance.
 
 ---
 
@@ -349,14 +362,14 @@ Results are stored under `results/runs/<experiment_id>/`:
 
 | Output | Description |
 |--------|-------------|
-| `results/runs/flagship_v1/processed/report_metrics.json` | **Single source of truth** — aggregate metrics |
-| `results/runs/flagship_v1/processed/summary.json` | Per-problem statistics |
-| `results/runs/flagship_v1/raw/cells.jsonl` | Per-cell records (JSONL) |
-| `results/runs/flagship_v1/figures/factorial_heatmap.png` | H × R matrix of solution probabilities |
-| `results/runs/flagship_v1/figures/variance_decomposition.png` | Bar chart: H, R, H×R effect sizes |
-| `results/runs/flagship_v1/figures/baseline_comparison.png` | Search improvement over baseline |
-| `results/runs/flagship_v1/environment.json` | Software versions + seed |
-| `results/runs/flagship_v1/config.yaml` | Frozen experiment config |
+| `results/runs/flagship_v2/processed/report_metrics.json` | **Single source of truth** — aggregate metrics |
+| `results/runs/flagship_v2/processed/summary.json` | Per-problem statistics |
+| `results/runs/flagship_v2/raw/cells.jsonl` | Per-cell records (JSONL) |
+| `results/runs/flagship_v2/figures/factorial_heatmap.png` | H × R matrix of solution probabilities |
+| `results/runs/flagship_v2/figures/variance_decomposition.png` | Bar chart: H, R, H×R effect sizes |
+| `results/runs/flagship_v2/figures/baseline_comparison.png` | Search improvement over baseline |
+| `results/runs/flagship_v2/environment.json` | Software versions + seed |
+| `results/runs/flagship_v2/config.yaml` | Frozen experiment config |
 
 `results/latest.txt` points to the most recent experiment.
 
@@ -427,7 +440,7 @@ guide. Every experiment records:
 - Random seeds (passed to all generators and embedders)
 - Per-cell records (`results/runs/<id>/raw/cells.jsonl`)
 - The exact QoolQit version (`1.4.0`) stated in every notebook
-- Frozen experiment configs (`experiments/smoke_v1.yaml`, `experiments/flagship_v1.yaml`)
+- Frozen experiment configs (`experiments/smoke_v1.yaml`, `experiments/flagship_v2.yaml`)
 - Pinned dependencies (`requirements-contest.txt`)
 
 ```python
