@@ -1,0 +1,19 @@
+{
+  "experiment_id": "flagship_v3",
+  "n_problems": 6,
+  "n_hamiltonian_representations": 5,
+  "n_embedding_representations": 9,
+  "n_cells_total": 810,
+  "n_replicates": 3,
+  "n_feasible_cells_total": 309,
+  "eta2_H_median": 0.06833109084287269,
+  "eta2_R_median": 0.1896674550034786,
+  "eta2_HxR_median": 0.4816744829071199,
+  "median_absolute_improvement": 0.0045,
+  "median_relative_improvement": 0.045454545454545414,
+  "fraction_improved": 1.0,
+  "n_problems_baseline_feasible": 1,
+  "n_problems_best_feasible": 6,
+  "elapsed_seconds": 392.88607692718506,
+  "qoolqit_version": "1.4.0"
+}

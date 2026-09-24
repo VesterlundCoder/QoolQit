@@ -103,7 +103,12 @@ class CombinedResult:
         return mat
 
     def matrix_with_replicates(self, metric: str = "ground_state_probability") -> np.ndarray:
-        """Return a 3-D array (n_H, n_R, n_replicates) for ANOVA."""
+        """Return a 3-D array (n_H, n_R, n_replicates) for ANOVA.
+
+        For 'end_to_end_success', infeasible cells (terminal invalid or
+        compilation failed) are 0, giving a balanced factorial design.
+        For other metrics, NaN is used for missing values.
+        """
         H = self.hamiltonian_ids
         R = self.embedder_ids
         hidx = {h: i for i, h in enumerate(H)}
@@ -111,25 +116,45 @@ class CombinedResult:
         # collect replicates per cell
         reps: dict[tuple[str, str], list[float]] = {}
         for c in self.cells:
-            val = getattr(c, metric, None)
-            if val is not None and not np.isnan(val):
-                key = (c.hamiltonian_id, c.embedder)
-                reps.setdefault(key, []).append(val)
+            if metric == "end_to_end_success":
+                # S = F * p_opt where F = 1[terminal valid AND compilable]
+                if c.terminal_encoding_valid is False or c.compilation_success is False:
+                    val = 0.0
+                elif c.ground_state_probability is not None and not np.isnan(c.ground_state_probability):
+                    val = c.ground_state_probability
+                else:
+                    val = 0.0
+            else:
+                val = getattr(c, metric, None)
+                if val is None or (isinstance(val, float) and np.isnan(val)):
+                    continue
+            key = (c.hamiltonian_id, c.embedder)
+            reps.setdefault(key, []).append(val)
         n_replicates = max((len(v) for v in reps.values()), default=1)
-        Y = np.full((len(H), len(R), n_replicates), np.nan)
-        for (h, r), vals in reps.items():
-            for k, v in enumerate(vals):
-                Y[hidx[h], ridx[r], k] = v
+        if metric == "end_to_end_success":
+            # Fill all cells: 0 for missing, value for present
+            Y = np.zeros((len(H), len(R), n_replicates))
+            for (h, r), vals in reps.items():
+                for k, v in enumerate(vals):
+                    Y[hidx[h], ridx[r], k] = v
+        else:
+            Y = np.full((len(H), len(R), n_replicates), np.nan)
+            for (h, r), vals in reps.items():
+                for k, v in enumerate(vals):
+                    Y[hidx[h], ridx[r], k] = v
         return Y
 
-    def variance_decomposition(self, metric: str = "ground_state_probability") -> dict:
+    def variance_decomposition(self, metric: str = "end_to_end_success") -> dict:
         """Decompose total variance using two-way ANOVA.
+
+        Default metric is 'end_to_end_success' (S = F * p_opt) which gives a
+        balanced factorial design: infeasible cells contribute 0.
 
         Returns:
             ss_H, ss_R, ss_HxR, ss_residual, ss_total,
             eta2_H, eta2_R, eta2_HxR, eta2_residual,
             df_H, df_R, df_HxR, df_residual,
-            n_cells, n_replicates
+            n_cells, n_replicates, n_feasible_cells
         """
         Y = self.matrix_with_replicates(metric)
         n_H = len(self.hamiltonian_ids)
@@ -139,6 +164,10 @@ class CombinedResult:
             return {"eta2_H": 0.0, "eta2_R": 0.0, "eta2_HxR": 0.0,
                     "eta2_residual": 0.0, "n_cells": n_H * n_R, "n_replicates": n_reps}
         result = two_way_anova(Y, n_H, n_R, max(n_reps, 1))
+        # Count feasible cells (terminal valid AND compilation success)
+        n_feasible = sum(1 for c in self.cells
+                         if c.terminal_encoding_valid is True
+                         and c.compilation_success is True)
         return {
             "ss_H": result.ss_H, "ss_R": result.ss_R,
             "ss_HxR": result.ss_HxR, "ss_residual": result.ss_residual,
@@ -148,6 +177,7 @@ class CombinedResult:
             "df_H": result.df_H, "df_R": result.df_R,
             "df_HxR": result.df_HxR, "df_residual": result.df_residual,
             "n_cells": result.n_cells, "n_replicates": result.n_replicates,
+            "n_feasible_cells": n_feasible,
         }
 
     def best_cell(self, metric: str = "ground_state_probability") -> FactorialCell | None:
@@ -195,36 +225,57 @@ class CombinedResult:
                           if c.hamiltonian_id == first_h and c.embedder == first_r]
         return baseline_cells[0] if baseline_cells else self.cells[0]
 
-    def best_vs_baseline(self, metric: str = "ground_state_probability") -> dict:
+    def best_vs_baseline(self, metric: str = "end_to_end_success") -> dict:
         """Compare best (H,R) mean vs baseline (H,R) mean, with Wilson CI.
 
         Uses pooled counts across replicates for the Wilson interval.
+        For 'end_to_end_success', infeasible cells are 0 (not NaN).
+        Baseline infeasibility is reported as 'baseline_infeasible', not p_opt=0.
         """
         from collections import defaultdict
         groups: dict[tuple[str, str], list[FactorialCell]] = defaultdict(list)
         for c in self.cells:
-            val = getattr(c, metric, None)
-            if val is not None and not np.isnan(val):
-                groups[(c.hamiltonian_id, c.embedder)].append(c)
+            groups[(c.hamiltonian_id, c.embedder)].append(c)
         if not groups:
             return {}
+
+        def cell_value(c: FactorialCell) -> float:
+            if metric == "end_to_end_success":
+                if c.terminal_encoding_valid is False or c.compilation_success is False:
+                    return 0.0
+                if c.ground_state_probability is not None and not np.isnan(c.ground_state_probability):
+                    return c.ground_state_probability
+                return 0.0
+            val = getattr(c, metric, None)
+            return float(val) if val is not None and not np.isnan(val) else 0.0
+
+        def is_feasible(c: FactorialCell) -> bool:
+            return c.terminal_encoding_valid is True and c.compilation_success is True
+
         # Compute mean per (H, R)
         means = {}
+        feasibility = {}
         for key, cells in groups.items():
-            vals = [getattr(c, metric) for c in cells]
+            vals = [cell_value(c) for c in cells]
             means[key] = float(np.mean(vals))
+            feasibility[key] = any(is_feasible(c) for c in cells)
+
         best_key = max(means, key=means.get)
         baseline_key = (self.cells[0].hamiltonian_id, self.cells[0].embedder)
         best_mean = means[best_key]
         baseline_mean = means.get(baseline_key, 0.0)
-        # When baseline is 0, relative improvement is undefined.
-        # Report absolute improvement and whether baseline succeeded.
-        if baseline_mean > 0:
+        baseline_feasible = feasibility.get(baseline_key, False)
+
+        # When baseline is infeasible, relative improvement is undefined
+        if baseline_feasible and baseline_mean > 0:
             relative = (best_mean - baseline_mean) / baseline_mean
-        elif best_mean > 0:
-            relative = None  # baseline=0, best>0 → relative undefined
+        elif baseline_feasible and baseline_mean == 0 and best_mean > 0:
+            relative = None  # baseline feasible but p_opt=0
+        elif not baseline_feasible and best_mean > 0:
+            relative = None  # baseline infeasible
         else:
             relative = 0.0
+
         improvement = {
             "absolute": best_mean - baseline_mean,
             "relative": relative,
@@ -232,8 +283,8 @@ class CombinedResult:
             "baseline_key": baseline_key,
             "best_mean": best_mean,
             "baseline_mean": baseline_mean,
-            "baseline_success": baseline_mean > 0,
-            "best_success": best_mean > 0,
+            "baseline_feasible": baseline_feasible,
+            "best_feasible": feasibility.get(best_key, False),
         }
         return improvement
 

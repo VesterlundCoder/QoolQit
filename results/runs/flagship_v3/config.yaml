@@ -1,0 +1,60 @@
+baseline:
+  embedding: first
+  hamiltonian: first
+  schedule: linear
+control:
+  amp_max: 1.5
+  det_max: 5.0
+  duration: 4.0
+  schedule: linear
+embedding:
+  families:
+  - interaction
+  - spring
+  - blade
+  n_per_family: 3
+execution:
+  device: AnalogDeviceWithDMM
+  n_replicates: 3
+  num_shots: 1000
+  profile: max_energy
+experiment_id: flagship_v3
+hamiltonian:
+  U_values: null
+  n_representations: 5
+  transform: mwis_penalty
+problems:
+- id: path_n5_seed42
+  n: 5
+  seed: 42
+  type: mwis_path
+- id: path_n6_seed1
+  n: 6
+  seed: 1
+  type: mwis_path
+- id: cycle_n6_seed42
+  n: 6
+  seed: 42
+  type: mwis_cycle
+- cols: 3
+  id: grid_2x3_seed42
+  rows: 2
+  seed: 42
+  type: mwis_grid
+- id: geometric_n6_seed1
+  n: 6
+  radius: 0.7
+  seed: 1
+  type: mwis_random_geometric
+- id: erdos_n6_seed2
+  n: 6
+  p: 0.4
+  seed: 2
+  type: mwis_erdos_renyi
+qoolqit_version: 1.4.0
+robustness:
+  enabled: true
+  samples: 3
+  sigma: 0.02
+seeds:
+  base: 42

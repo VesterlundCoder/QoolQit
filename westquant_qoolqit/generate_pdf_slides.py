@@ -52,7 +52,7 @@ make_pdf(
     [
         "Problem: A fixed logical Hamiltonian does not determine a unique useful quantum representation. The physical embedding/layout matters.",
         "Approach: Automated search over QoolQit embeddings (InteractionEmbedder, SpringLayoutEmbedder, Blade) using successive halving across 5 stages: cheap metrics, logical fidelity, compilation, emulation, robustness.",
-        "Results: Flagship experiment (6 problems, 9 embeddings, 3 replicates): embedding main effect η²(R) = 10.4% (median). Search finds non-zero solutions for 6/6 problems where baseline fails for 5/6.",
+        "Results: Flagship experiment (6 problems, 9 embeddings, 3 replicates): embedding main effect η²(R) = 19.0% (median). For 5/6 problems, the preselected baseline fails terminal ground-state preservation; search finds feasible alternatives for 6/6.",
         "Importance: Treating the embedding as an optimization variable (not a fixed choice) materially improves quantum solution quality. Open-source, deterministic, no proprietary infrastructure required.",
     ],
     "Slide 2 — QoolQit Experience",
@@ -70,8 +70,8 @@ make_pdf(
     [
         "Problem: A mathematical optimization problem does not determine a unique useful Hamiltonian representation. Penalty strength, variable encoding, and landscape all matter.",
         "Approach: Generate multiple valid representations (scaling, permutation, bit-complement, MWIS penalty family) and verify equivalence by exhaustive state-by-state comparison. Each is classified: EXACT_EQUIVALENT, GROUND_STATE_EQUIVALENT, SAME_PROBLEM_DIFFERENT_DYNAMICS, APPROXIMATE, or INVALID.",
-        "Results: For MWIS, penalty strengths U in [5.5, 22.2] all yield GROUND_STATE_EQUIVALENT Hamiltonians. The Hamiltonian main effect is η²(H) = 7.6% (median across 6 problems).",
-        "Importance: The Hamiltonian representation choice matters less than its interaction with the embedding. Representation itself is an optimization variable, but the H×R interaction (33.3%) is the dominant effect.",
+        "Results: For MWIS, penalty strengths U in [5.5, 22.2] all yield GROUND_STATE_EQUIVALENT Hamiltonians. The Hamiltonian main effect is η²(H) = 6.8% (median across 6 problems).",
+        "Importance: The Hamiltonian representation choice matters less than its interaction with the embedding. Representation itself is an optimization variable, but the H×R interaction (48.2%) is the dominant effect.",
     ],
     "Slide 2 — QoolQit Experience",
     [
@@ -88,7 +88,7 @@ make_pdf(
     [
         "Problem: Quantum algorithm design typically performs one fixed translation from optimization problem to hardware. We argue representation itself should be searched.",
         "Approach: A composable pipeline: P -> H_i (Hamiltonian Explorer) -> R_ij (Representation Scheduler) -> Q_ijk (QoolQit compilation + emulation) -> Pareto selection. Both projects are independently useful and composable.",
-        "Results: Flagship experiment (6 problems x 5 H x 9 R x 3 replicates = 810 cells): H×R interaction dominates (η² = 33.3%), embedding main effect η²(R) = 10.4%, Hamiltonian main effect η²(H) = 7.6%. For 5/6 problems, baseline produces zero ground-state probability; search finds non-zero solutions for 6/6.",
+        "Results: Flagship experiment (6 problems x 5 H x 9 R x 3 replicates = 810 cells): H×R interaction dominates (η² = 48.2%), embedding main effect η²(R) = 19.0%, Hamiltonian main effect η²(H) = 6.8%. For 5/6 problems, the preselected baseline fails terminal ground-state preservation; search finds feasible alternatives for 6/6. Representation search can rescue an otherwise invalid physical realization.",
         "Importance: The H×R interaction is the dominant effect, directly motivating joint representation search. Neither H alone nor R alone determines performance — it is their interaction that matters. QoolQit serves as the evaluation engine; WestQuant AI is optional. Fully open-source, deterministic, reproducible.",
     ],
     "Slide 2 — QoolQit Experience",

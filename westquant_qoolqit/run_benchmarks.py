@@ -117,10 +117,10 @@ def run_experiment(config: dict, experiment_id: str) -> dict:
             det_max=det_max,
             profile=profile,
         )
-        # Collect per-problem stats using mean-over-replicates comparison
+        # Collect per-problem stats using end-to-end success metric
         mat = result.matrix("ground_state_probability")
-        vd = result.variance_decomposition("ground_state_probability")
-        imp = result.best_vs_baseline("ground_state_probability")
+        vd = result.variance_decomposition("end_to_end_success")
+        imp = result.best_vs_baseline("end_to_end_success")
         problem_result = {
             "problem_id": pspec["id"],
             "n_cells": len(result.cells),
@@ -131,6 +131,8 @@ def run_experiment(config: dict, experiment_id: str) -> dict:
             "improvement": imp if imp else None,
         }
         all_results.append(problem_result)
+        for rec in result.records:
+            rec["problem_id"] = pspec["id"]
         all_records.extend(result.records)
 
     elapsed = time.time() - t0
@@ -138,17 +140,18 @@ def run_experiment(config: dict, experiment_id: str) -> dict:
     # Aggregate across problems
     absolute_improvements = [r["improvement"]["absolute"] for r in all_results
                              if r.get("improvement")]
+    baseline_feasible_count = sum(1 for r in all_results
+                                  if r.get("improvement") and r["improvement"].get("baseline_feasible"))
+    best_feasible_count = sum(1 for r in all_results
+                              if r.get("improvement") and r["improvement"].get("best_feasible"))
     relative_improvements = [r["improvement"]["relative"] for r in all_results
                              if r.get("improvement") and r["improvement"].get("relative") is not None]
-    baseline_successes = [r["improvement"]["baseline_success"] for r in all_results
-                          if r.get("improvement")]
-    best_successes = [r["improvement"]["best_success"] for r in all_results
-                      if r.get("improvement")]
     eta2_H_values = [r["variance_decomposition"].get("eta2_H", 0) for r in all_results]
     eta2_R_values = [r["variance_decomposition"].get("eta2_R", 0) for r in all_results]
     eta2_HxR_values = [r["variance_decomposition"].get("eta2_HxR", 0) for r in all_results]
+    n_feasible_values = [r["variance_decomposition"].get("n_feasible_cells", 0) for r in all_results]
 
-    # Fraction improved: best > baseline (including baseline=0, best>0)
+    # Fraction improved: best > baseline (including baseline infeasible, best feasible)
     n_improved = sum(1 for r in all_results
                      if r.get("improvement") and r["improvement"]["absolute"] > 0)
 
@@ -159,14 +162,15 @@ def run_experiment(config: dict, experiment_id: str) -> dict:
         "n_embedding_representations": n_per_family * len(embedder_families),
         "n_cells_total": sum(r["n_cells"] for r in all_results),
         "n_replicates": n_replicates,
+        "n_feasible_cells_total": sum(n_feasible_values),
         "eta2_H_median": float(np.median(eta2_H_values)) if eta2_H_values else 0.0,
         "eta2_R_median": float(np.median(eta2_R_values)) if eta2_R_values else 0.0,
         "eta2_HxR_median": float(np.median(eta2_HxR_values)) if eta2_HxR_values else 0.0,
         "median_absolute_improvement": float(np.median(absolute_improvements)) if absolute_improvements else 0.0,
         "median_relative_improvement": float(np.median(relative_improvements)) if relative_improvements else None,
         "fraction_improved": n_improved / len(all_results) if all_results else 0.0,
-        "n_problems_baseline_zero": sum(1 for s in baseline_successes if not s),
-        "n_problems_best_success": sum(1 for s in best_successes if s),
+        "n_problems_baseline_feasible": baseline_feasible_count,
+        "n_problems_best_feasible": best_feasible_count,
         "elapsed_seconds": elapsed,
         "qoolqit_version": actual_version,
     }
@@ -329,7 +333,9 @@ def main():
     if args.config:
         config_path = Path(args.config)
     else:
-        config_name = f"{args.mode}_v1.yaml"
+        # --mode flagship → flagship_v3.yaml (current official version)
+        # --mode smoke → smoke_v1.yaml
+        config_name = f"{args.mode}_v3.yaml" if args.mode == "flagship" else f"{args.mode}_v1.yaml"
         config_path = EXPERIMENTS_DIR / config_name
 
     if not config_path.exists():
@@ -365,10 +371,11 @@ def main():
     if rel is not None:
         print(f"Median relative improvement: {rel:.1%}")
     else:
-        print(f"Median relative improvement: N/A (baseline=0 for some problems)")
+        print(f"Median relative improvement: N/A (baseline infeasible for some problems)")
     print(f"Fraction improved: {rm['fraction_improved']:.1%}")
-    print(f"Problems with baseline=0: {rm['n_problems_baseline_zero']}/{rm['n_problems']}")
-    print(f"Problems where best succeeds: {rm['n_problems_best_success']}/{rm['n_problems']}")
+    print(f"Problems with feasible baseline: {rm['n_problems_baseline_feasible']}/{rm['n_problems']}")
+    print(f"Problems with feasible best: {rm['n_problems_best_feasible']}/{rm['n_problems']}")
+    print(f"Feasible H×R cells: {rm['n_feasible_cells_total']}/{rm['n_cells_total']}")
     print(f"Elapsed: {rm['elapsed_seconds']:.1f}s")
 
 

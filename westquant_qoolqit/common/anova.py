@@ -61,7 +61,8 @@ def two_way_anova(
 
     Arguments:
         Y: array of shape (n_H, n_R, n_replicates) containing observations.
-           NaN values are treated as missing and excluded from that cell.
+           All values must be finite (no NaN). For end-to-end success metrics,
+           infeasible cells should be 0 (not NaN), so the design stays balanced.
         n_H: number of Hamiltonian levels.
         n_R: number of embedding levels.
         n_replicates: number of replicates per cell.
@@ -72,20 +73,12 @@ def two_way_anova(
     """
     Y = np.asarray(Y, dtype=float)
     if Y.shape != (n_H, n_R, n_replicates):
-        # Try to reshape
         Y = Y.reshape(n_H, n_R, n_replicates)
 
-    # Replace NaN with cell mean (or grand mean if entire cell is NaN)
-    grand_mean = np.nanmean(Y)
-    for h in range(n_H):
-        for r in range(n_R):
-            cell = Y[h, r, :]
-            mask = ~np.isnan(cell)
-            if not np.any(mask):
-                Y[h, r, :] = grand_mean
-            elif not np.all(mask):
-                cell_mean = np.nanmean(cell)
-                Y[h, r, ~mask] = cell_mean
+    # For a balanced design with end-to-end success metric (S = F * p_opt),
+    # all cells are filled (infeasible = 0). No imputation needed.
+    # If any NaN remains, replace with 0 (treats as failure).
+    Y = np.nan_to_num(Y, nan=0.0)
 
     # Grand mean
     mu = float(Y.mean())

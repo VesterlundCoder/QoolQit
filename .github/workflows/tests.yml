@@ -26,6 +26,7 @@ jobs:
         python -m pip install --upgrade pip
         pip install -e ".[test]"
         pip install pyyaml
+        pip install jupyter nbconvert
 
     - name: Run tests
       run: |
@@ -34,6 +35,13 @@ jobs:
     - name: Run smoke benchmark
       run: |
         python -m westquant_qoolqit.run_benchmarks --mode smoke
+
+    - name: Execute combined notebook (must run top-to-bottom)
+      run: |
+        jupyter nbconvert --to notebook --execute \
+          notebooks/westquant_representation_stack_combined.ipynb \
+          --output /tmp/validated_combined.ipynb \
+          --ExecutePreprocessor.timeout=300
 
     - name: Validate submission
       run: |

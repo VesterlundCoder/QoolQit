@@ -1,0 +1,11 @@
+{
+  "qoolqit_version": "1.4.0",
+  "python_version": "3.10.12",
+  "numpy_version": "2.2.6",
+  "scipy_version": "1.15.3",
+  "networkx_version": "3.4.2",
+  "platform": "macOS-26.4-arm64-arm-64bit",
+  "seed": 42,
+  "experiment_id": "flagship_v3",
+  "timestamp": "2026-09-24T18:55:23"
+}

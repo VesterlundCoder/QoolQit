@@ -196,6 +196,7 @@ def build_mwis_dmm(
     h: BinaryQuadraticHamiltonian,
     weights: np.ndarray,
     det_max: float = 5.0,
+    duration: float = 4.0,
 ) -> DetuningMapModulator | None:
     """Build a DMM encoding MWIS vertex weights as per-atom detuning weights.
 
@@ -218,6 +219,7 @@ def build_mwis_dmm(
         h: the canonical Hamiltonian (linear terms should encode -w_i).
         weights: the original MWIS vertex weights (positive).
         det_max: the global final detuning δ_f (DMM amplitude = -det_max).
+        duration: the waveform duration (should match the drive duration).
 
     Returns None if weights are trivially uniform (no DMM needed).
     """
@@ -229,7 +231,7 @@ def build_mwis_dmm(
     if np.allclose(eps, 0.0):
         return None  # uniform weights: no DMM needed
     weight_dict = {i: float(eps[i]) for i in range(len(eps))}
-    wf = ConstantWaveform(4.0, -abs(det_max))
+    wf = ConstantWaveform(duration, -abs(det_max))
     return DetuningMapModulator(waveform=wf, weights=weight_dict)
 
 
@@ -290,7 +292,7 @@ def build_program(
     """
     if use_dmm:
         if mwis_weights is not None:
-            dmm = build_mwis_dmm(h, mwis_weights, det_max=det_max)
+            dmm = build_mwis_dmm(h, mwis_weights, det_max=det_max, duration=duration)
         else:
             dmm = local_detuning_dmm(h)
     else:

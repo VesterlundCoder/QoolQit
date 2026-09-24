@@ -151,6 +151,26 @@ def validate_submission() -> bool:
         print(result.stdout[-500:])
         all_ok = False
 
+    # Check notebook is executable
+    print("\n9. Notebook execution:")
+    nb_path = REPO_ROOT / "notebooks" / "westquant_representation_stack_combined.ipynb"
+    if nb_path.exists():
+        result = subprocess.run(
+            [sys.executable, "-m", "jupyter", "nbconvert", "--to", "notebook",
+             "--execute", str(nb_path), "--output", "/tmp/validated.ipynb",
+             "--ExecutePreprocessor.timeout=300"],
+            capture_output=True, text=True, cwd=str(REPO_ROOT),
+        )
+        if result.returncode == 0:
+            print("  [OK] Combined notebook executes top-to-bottom")
+        else:
+            print(f"  [FAIL] Notebook execution failed")
+            print(result.stderr[-500:])
+            all_ok = False
+    else:
+        print("  [FAIL] Combined notebook not found")
+        all_ok = False
+
     print(f"\n{'='*50}")
     if all_ok:
         print("SUBMISSION VALIDATION: PASSED")
