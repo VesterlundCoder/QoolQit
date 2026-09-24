@@ -1,0 +1,80 @@
+{
+  "wqir_version": "0.1-draft",
+  "artifact": "westquant-open-001",
+  "problem": {
+    "type": "MWIS",
+    "problem_id": "path_n5_seed42",
+    "n_variables": 5,
+    "weights": [3, 2, 4, 1, 5],
+    "edges": [[0, 1], [1, 2], [2, 3], [3, 4]],
+    "exact_optimum_energy": -8,
+    "exact_optimum_states": [[1, 0, 1, 0, 1]]
+  },
+  "hamiltonian_representations": [
+    {
+      "id": "H_mwis_U5.543",
+      "transform": "mwis_penalty",
+      "parameters": {"U": 5.543},
+      "equivalence_class": "GROUND_STATE_EQUIVALENT",
+      "verified": true,
+      "native_rydberg": true,
+      "classical_gap": 2.0
+    },
+    {
+      "id": "H_mwis_U6.652",
+      "transform": "mwis_penalty",
+      "parameters": {"U": 6.652},
+      "equivalence_class": "GROUND_STATE_EQUIVALENT",
+      "verified": true,
+      "native_rydberg": true,
+      "classical_gap": 3.0
+    },
+    {
+      "id": "H_mwis_U7.761",
+      "transform": "mwis_penalty",
+      "parameters": {"U": 7.761},
+      "equivalence_class": "GROUND_STATE_EQUIVALENT",
+      "verified": true,
+      "native_rydberg": true,
+      "classical_gap": 4.0
+    }
+  ],
+  "embedding_representations": [
+    {
+      "id": "R_int_s42_r0",
+      "family": "interaction",
+      "method": "InteractionEmbedder",
+      "seed": 42,
+      "replicate": 0
+    },
+    {
+      "id": "R_spr_s45_it50",
+      "family": "spring",
+      "method": "SpringLayoutEmbedder",
+      "seed": 45,
+      "iterations": 50
+    },
+    {
+      "id": "R_bld_s50_d3",
+      "family": "blade",
+      "method": "Blade",
+      "seed": 50,
+      "depth": 3
+    }
+  ],
+  "compilation": {
+    "device": "AnalogDeviceWithDMM",
+    "profile": "max_energy",
+    "duration": 4.0,
+    "amp_max": 1.5,
+    "det_max": 5.0
+  },
+  "evaluation": {
+    "simulator": "LocalEmulator",
+    "backend": "QutipBackendV2",
+    "n_shots": 1000,
+    "metric": "end_to_end_success",
+    "definition": "S = F * p_opt where F = 1[terminal valid AND compilable]"
+  },
+  "notes": "Draft 0.1 schema for the WestQuant Intermediate Representation (WQIR). Illustrative only. See rfcs/RFC-0001-WQIR.md."
+}

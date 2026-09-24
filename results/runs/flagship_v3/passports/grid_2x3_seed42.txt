@@ -1,0 +1,40 @@
+REPRESENTATION PASSPORT
+========================
+
+Problem:           MWIS grid_2x3_seed42
+Experiment:        flagship_v3
+QoolQit version:   1.4.0
+Python version:    3.10.12
+
+--- Hamiltonian representation ---
+ID:               H_mwis_U9.805
+Transform:         mwis_penalty
+Penalty U:         9.805
+Equivalence:       GROUND_STATE_EQUIVALENT
+Verified:          yes
+
+--- Embedding representation ---
+ID:               R_spr_s45_it50
+Family:            spring
+Embedding error:    0.761271
+Logical fidelity:  0.342216
+
+--- Compilation ---
+Device:            AnalogDeviceWithDMM
+Profile:           max_energy
+Duration:          4.0 us
+Compilation:       SUCCESS
+
+--- Evaluation ---
+Simulator:         LocalEmulator (QutipBackendV2)
+Shots:             1000
+p(opt):            0.0120
+End-to-end success: 0.0120
+Robustness:        0.8660
+
+--- Trace ---
+P(grid_2x3_seed42) -> H_mwis_U9.805 -> R_spr_s45_it50 -> QoolQit -> S=0.0120
+
+--- Artifact ---
+WestQuant Open Artifact #001
+Search the representation, not just the parameters.

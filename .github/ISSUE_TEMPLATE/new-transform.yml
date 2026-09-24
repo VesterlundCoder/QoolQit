@@ -1,0 +1,36 @@
+name: New Hamiltonian transform
+description: Propose a new Hamiltonian representation transform
+title: "[TRANSFORM] "
+labels: ["enhancement", "hamiltonian"]
+body:
+  - type: textarea
+    id: definition
+    attributes:
+      label: Mathematical definition
+      description: Define the transform mathematically (E'(T(x)) = ...)
+    validations:
+      required: true
+  - type: dropdown
+    id: equivalence-class
+    attributes:
+      label: Expected equivalence class
+      options:
+        - EXACT_EQUIVALENT
+        - GROUND_STATE_EQUIVALENT
+        - SAME_PROBLEM_DIFFERENT_DYNAMICS
+        - APPROXIMATE
+        - INVALID
+    validations:
+      required: true
+  - type: textarea
+    id: applicability
+    attributes:
+      label: Applicability conditions
+      description: When is this transform valid? What problem types?
+    validations:
+      required: true
+  - type: textarea
+    id: verification
+    attributes:
+      label: Verification method
+      description: How should equivalence be verified?

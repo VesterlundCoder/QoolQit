@@ -1,0 +1,42 @@
+name: Bug report
+description: Report a bug in the WestQuant Representation Stack
+title: "[BUG] "
+labels: ["bug"]
+body:
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: What happened? What did you expect?
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      description: Minimal example to reproduce the issue
+      placeholder: |
+        git clone ...
+        pip install -e ".[test]"
+        python -m westquant_qoolqit.run_benchmarks --mode smoke
+    validations:
+      required: true
+  - type: input
+    id: qoolqit-version
+    attributes:
+      label: QoolQit version
+      placeholder: "1.4.0"
+    validations:
+      required: true
+  - type: input
+    id: python-version
+    attributes:
+      label: Python version
+      placeholder: "3.10.12"
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Error output
+      description: Paste the relevant error output or traceback

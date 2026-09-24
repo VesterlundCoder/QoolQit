@@ -1,10 +1,30 @@
 # WestQuant Representation Stack for QoolQit
 
-**Verified against QoolQit 1.4.0** · Python 3.10.12 · macOS / Linux · MIT License
+### Search the representation, not just the parameters.
 
-> A mathematical optimization problem does not necessarily determine a unique
-> useful quantum representation. **Representation itself can be treated as an
-> optimization variable.**
+**WestQuant Open — Reference Artifact #001**
+
+**Verified against QoolQit 1.4.0** · Python 3.10+ · macOS / Linux · Apache-2.0
+
+A mathematical optimization problem can have many logically valid Hamiltonian
+and physical representations. Their interaction can determine whether the
+problem is physically realizable and how well it performs.
+
+WestQuant treats representation choice as an explicit search problem:
+
+```
+Problem
+  ↓
+Hamiltonian representations
+  ↓
+Physical embeddings
+  ↓
+Verification
+  ↓
+QoolQit compilation + emulation
+  ↓
+Pareto selection
+```
 
 This repository contains two composable, open-source contributions for the
 [Pasqal QoolQit Contest](https://www.pasqal.com/resources/the-qoolqit-contest-is-live/),
@@ -17,6 +37,36 @@ built on the real installed QoolQit 1.4.0 API:
 
 Both are independently useful and composable into a **Representation Stack**
 that searches both layers simultaneously via a factorial experiment.
+
+## Flagship result
+
+```
+6 MWIS problems
+270 unique H×R representation pairs
+810 replicated observations
+1000 shots per emulation
+```
+
+Median effect sizes for end-to-end success:
+
+| Effect | η² (median) |
+|--------|-------------|
+| Hamiltonian | 6.8% |
+| Embedding | 19.0% |
+| **Hamiltonian × Embedding** | **48.2%** |
+
+For 5 of 6 benchmark problems, the preselected fixed baseline fails
+physical feasibility. Representation search identifies at least one
+valid realization for all six.
+
+## Why this repository exists
+
+This repository is both a QoolQit contest contribution and **WestQuant Open
+Artifact #001**: the first public reference implementation of representation
+search.
+
+The next layers are WQIR, RepGraph and learned representation scheduling
+through WQT20 (planned, see `docs/ECOSYSTEM.md` and `ROADMAP.md`).
 
 ---
 
@@ -45,6 +95,7 @@ that searches both layers simultaneously via a factorial experiment.
 ```bash
 git clone https://github.com/VesterlundCoder/QoolQit.git
 cd QoolQit
+git checkout qoolqit-contest-v1.1
 pip install -e ".[test]"       # installs westquant_qoolqit + deps (qoolqit>=1.4.0)
 
 # verify
@@ -314,27 +365,34 @@ Source: `results/runs/flagship_v3/processed/report_metrics.json`
 | Hamiltonian representations per problem | 5 (MWIS penalty, varying U) |
 | Embedding representations per problem | 9 (3 interaction + 3 spring + 3 blade) |
 | Replicates per cell | 3 |
-| Unique H×R cells | 270 |
+| Unique H×R factor cells | 270 |
 | Total observations | 810 |
-| Feasible H×R cells (terminal valid + compilable) | 309/810 |
+| Terminal-valid factor cells | 110/270 |
+| Compilable factor cells | 103/270 |
+| Feasible factor cells (terminal valid + compilable) | 103/270 |
+| Feasible observations | 309/810 |
 | **η²(H) — Hamiltonian main effect** | **6.8%** (median) |
 | **η²(R) — Embedding main effect** | **19.0%** (median) |
 | **η²(H×R) — Interaction effect** | **48.2%** (median) |
-| Fraction of problems improved | **100%** (6/6) |
 | Problems with feasible baseline | 1/6 |
 | Problems with feasible best | **6/6** |
 | QoolQit version | 1.4.0 |
 
-**Finding:** The H×R interaction is the dominant effect (median ~33%), directly
-motivating joint representation search. Neither the Hamiltonian alone nor the
-embedding alone determines performance — it is their *interaction* that matters.
+**Finding:** Across six MWIS benchmark problems, the Hamiltonian×embedding
+interaction accounts for a median 48.2% of variation in end-to-end
+representation success. Neither the Hamiltonian alone nor the embedding alone
+determines performance — it is their *interaction* that matters.
 
 **Feasibility rescue:** For 5 of 6 problems, the preselected fixed baseline
 (first H, first R) fails terminal ground-state preservation — it cannot be
 physically realized correctly on the device model. Representation search
-identifies physically valid alternatives for **all 6 problems**. This is a
-stronger result than a percentage improvement: the search enables solutions
-that the default representation cannot reach at all.
+identifies physically valid alternatives for **all 6 problems**. The search
+enables solutions that the preselected baseline cannot reach at all.
+
+**Conditional performance:** For the one problem where the baseline is
+feasible (path_n5), the baseline and best representations produce similar
+p_opt values (0.029 vs 0.031). The headline result is feasibility rescue,
+not universal performance improvement.
 
 Per-problem breakdown (source: `results/runs/flagship_v3/processed/summary.json`):
 
@@ -353,7 +411,7 @@ search finds representations that the preselected baseline cannot achieve.
 
 **Note on baseline:** The "preselected fixed baseline" is the first
 Hamiltonian representation × first embedding candidate. It is not the QoolQit
-default InteractionEmbedder (which uses its own internal seed).
+default `InteractionEmbedder` (which uses its own internal seed).
 
 ---
 

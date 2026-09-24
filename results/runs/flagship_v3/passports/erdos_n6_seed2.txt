@@ -1,0 +1,40 @@
+REPRESENTATION PASSPORT
+========================
+
+Problem:           MWIS erdos_n6_seed2
+Experiment:        flagship_v3
+QoolQit version:   1.4.0
+Python version:    3.10.12
+
+--- Hamiltonian representation ---
+ID:               H_mwis_U24.349
+Transform:         mwis_penalty
+Penalty U:         24.349
+Equivalence:       GROUND_STATE_EQUIVALENT
+Verified:          yes
+
+--- Embedding representation ---
+ID:               R_spr_s46_it200
+Family:            spring
+Embedding error:    0.749370
+Logical fidelity:  0.855495
+
+--- Compilation ---
+Device:            AnalogDeviceWithDMM
+Profile:           max_energy
+Duration:          4.0 us
+Compilation:       SUCCESS
+
+--- Evaluation ---
+Simulator:         LocalEmulator (QutipBackendV2)
+Shots:             1000
+p(opt):            0.0050
+End-to-end success: 0.0050
+Robustness:        0.8660
+
+--- Trace ---
+P(erdos_n6_seed2) -> H_mwis_U24.349 -> R_spr_s46_it200 -> QoolQit -> S=0.0050
+
+--- Artifact ---
+WestQuant Open Artifact #001
+Search the representation, not just the parameters.

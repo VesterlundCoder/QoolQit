@@ -133,6 +133,27 @@ def run_experiment(config: dict, experiment_id: str) -> dict:
         all_results.append(problem_result)
         for rec in result.records:
             rec["problem_id"] = pspec["id"]
+            rec["experiment_id"] = experiment_id
+            rec["qoolqit_version"] = actual_version
+            # Feasibility and end-to-end success
+            terminal_valid = rec.get("terminal_encoding_valid") is True
+            compilable = rec.get("compilation_success") is True
+            feasible = terminal_valid and compilable
+            rec["feasible"] = feasible
+            p_opt = rec.get("solution_probability")
+            if feasible and p_opt is not None:
+                rec["end_to_end_success"] = p_opt
+            else:
+                rec["end_to_end_success"] = 0.0
+            # Failure stage
+            if feasible:
+                rec["failure_stage"] = None
+            elif not terminal_valid:
+                rec["failure_stage"] = "terminal_validation"
+            elif not compilable:
+                rec["failure_stage"] = "compilation"
+            else:
+                rec["failure_stage"] = "emulation"
         all_records.extend(result.records)
 
     elapsed = time.time() - t0
@@ -149,7 +170,11 @@ def run_experiment(config: dict, experiment_id: str) -> dict:
     eta2_H_values = [r["variance_decomposition"].get("eta2_H", 0) for r in all_results]
     eta2_R_values = [r["variance_decomposition"].get("eta2_R", 0) for r in all_results]
     eta2_HxR_values = [r["variance_decomposition"].get("eta2_HxR", 0) for r in all_results]
-    n_feasible_values = [r["variance_decomposition"].get("n_feasible_cells", 0) for r in all_results]
+    n_feasible_values = [r["variance_decomposition"].get("n_feasible_observations", 0) for r in all_results]
+    n_factor_values = [r["variance_decomposition"].get("n_factor_cells", 0) for r in all_results]
+    n_feasible_factor_values = [r["variance_decomposition"].get("n_feasible_factor_cells", 0) for r in all_results]
+    n_terminal_valid_factor_values = [r["variance_decomposition"].get("n_terminal_valid_factor_cells", 0) for r in all_results]
+    n_compilable_factor_values = [r["variance_decomposition"].get("n_compilable_factor_cells", 0) for r in all_results]
 
     # Fraction improved: best > baseline (including baseline infeasible, best feasible)
     n_improved = sum(1 for r in all_results
@@ -163,6 +188,13 @@ def run_experiment(config: dict, experiment_id: str) -> dict:
         "n_cells_total": sum(r["n_cells"] for r in all_results),
         "n_replicates": n_replicates,
         "n_feasible_cells_total": sum(n_feasible_values),
+        # Clean metric names (spec item 4)
+        "n_factor_cells": sum(n_factor_values),
+        "n_feasible_factor_cells": sum(n_feasible_factor_values),
+        "n_terminal_valid_factor_cells": sum(n_terminal_valid_factor_values),
+        "n_compilable_factor_cells": sum(n_compilable_factor_values),
+        "n_observations": sum(r["n_cells"] for r in all_results),
+        "n_feasible_observations": sum(n_feasible_values),
         "eta2_H_median": float(np.median(eta2_H_values)) if eta2_H_values else 0.0,
         "eta2_R_median": float(np.median(eta2_R_values)) if eta2_R_values else 0.0,
         "eta2_HxR_median": float(np.median(eta2_HxR_values)) if eta2_HxR_values else 0.0,

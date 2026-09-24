@@ -1,0 +1,40 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+title: "WestQuant Representation Stack for QoolQit"
+type: software
+authors:
+  - given-names: "David"
+    family-names: "Vesterlund"
+    orcid: "https://orcid.org/0009-0000-0000-0000"
+    affiliation: "WestQuant"
+repository-code: "https://github.com/VesterlundCoder/QoolQit"
+url: "https://github.com/VesterlundCoder/QoolQit"
+abstract: >-
+  The WestQuant Representation Stack searches both the Hamiltonian
+  representation and the physical embedding of an optimization problem
+  before compilation and emulation. It is the first public reference
+  implementation of representation search (WestQuant Open Artifact #001).
+keywords:
+  - quantum-computing
+  - quantum-optimization
+  - representation-search
+  - QoolQit
+  - Pasqal
+  - MWIS
+  - Hamiltonian
+  - embedding
+license: Apache-2.0
+version: "1.1.0"
+date-released: "2025-01-01"
+preferred-citation:
+  type: software
+  title: "WestQuant Representation Stack for QoolQit"
+  authors:
+    - given-names: "David"
+      family-names: "Vesterlund"
+      orcid: "https://orcid.org/0009-0000-0000-0000"
+      affiliation: "WestQuant"
+  repository-code: "https://github.com/VesterlundCoder/QoolQit"
+  version: "1.1.0"
+  date-released: "2025-01-01"
+  url: "https://github.com/VesterlundCoder/QoolQit"

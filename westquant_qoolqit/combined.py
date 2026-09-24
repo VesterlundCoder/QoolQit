@@ -85,14 +85,32 @@ class CombinedResult:
     records: list[dict] = field(default_factory=list)
 
     def matrix(self, metric: str = "ground_state_probability") -> np.ndarray:
-        """Return the H x R matrix for one metric (mean over replicates, NaN where unavailable)."""
+        """Return the H x R matrix for one metric (mean over replicates, NaN where unavailable).
+
+        For 'end_to_end_success', infeasible cells are 0 (not NaN).
+        """
         H = self.hamiltonian_ids
         R = self.embedder_ids
-        mat = np.full((len(H), len(R)), np.nan)
         hidx = {h: i for i, h in enumerate(H)}
         ridx = {r: i for i, r in enumerate(R)}
+        if metric == "end_to_end_success":
+            mat = np.zeros((len(H), len(R)))
+            values: dict[tuple[str, str], list[float]] = {}
+            for c in self.cells:
+                if c.terminal_encoding_valid is False or c.compilation_success is False:
+                    val = 0.0
+                elif c.ground_state_probability is not None and not np.isnan(c.ground_state_probability):
+                    val = c.ground_state_probability
+                else:
+                    val = 0.0
+                key = (c.hamiltonian_id, c.embedder)
+                values.setdefault(key, []).append(val)
+            for (h, r), vals in values.items():
+                mat[hidx[h], ridx[r]] = float(np.mean(vals))
+            return mat
+        mat = np.full((len(H), len(R)), np.nan)
         # collect all values per (H, R) cell
-        values: dict[tuple[str, str], list[float]] = {}
+        values = {}
         for c in self.cells:
             val = getattr(c, metric, None)
             if val is not None and not np.isnan(val):
@@ -164,10 +182,23 @@ class CombinedResult:
             return {"eta2_H": 0.0, "eta2_R": 0.0, "eta2_HxR": 0.0,
                     "eta2_residual": 0.0, "n_cells": n_H * n_R, "n_replicates": n_reps}
         result = two_way_anova(Y, n_H, n_R, max(n_reps, 1))
-        # Count feasible cells (terminal valid AND compilation success)
-        n_feasible = sum(1 for c in self.cells
-                         if c.terminal_encoding_valid is True
-                         and c.compilation_success is True)
+        # Count unique factor cells and feasible cells
+        factor_keys = set()
+        feasible_keys = set()
+        terminal_valid_keys = set()
+        compilable_keys = set()
+        for c in self.cells:
+            key = (c.hamiltonian_id, c.embedder)
+            factor_keys.add(key)
+            if c.terminal_encoding_valid is True:
+                terminal_valid_keys.add(key)
+            if c.compilation_success is True:
+                compilable_keys.add(key)
+            if c.terminal_encoding_valid is True and c.compilation_success is True:
+                feasible_keys.add(key)
+        n_feasible_obs = sum(1 for c in self.cells
+                             if c.terminal_encoding_valid is True
+                             and c.compilation_success is True)
         return {
             "ss_H": result.ss_H, "ss_R": result.ss_R,
             "ss_HxR": result.ss_HxR, "ss_residual": result.ss_residual,
@@ -177,7 +208,14 @@ class CombinedResult:
             "df_H": result.df_H, "df_R": result.df_R,
             "df_HxR": result.df_HxR, "df_residual": result.df_residual,
             "n_cells": result.n_cells, "n_replicates": result.n_replicates,
-            "n_feasible_cells": n_feasible,
+            "n_feasible_cells": n_feasible_obs,
+            # Clean metric names (spec item 4)
+            "n_factor_cells": len(factor_keys),
+            "n_feasible_factor_cells": len(feasible_keys),
+            "n_terminal_valid_factor_cells": len(terminal_valid_keys),
+            "n_compilable_factor_cells": len(compilable_keys),
+            "n_observations": len(self.cells),
+            "n_feasible_observations": n_feasible_obs,
         }
 
     def best_cell(self, metric: str = "ground_state_probability") -> FactorialCell | None:

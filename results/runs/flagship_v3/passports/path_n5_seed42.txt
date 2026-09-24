@@ -1,0 +1,40 @@
+REPRESENTATION PASSPORT
+========================
+
+Problem:           MWIS path_n5_seed42
+Experiment:        flagship_v3
+QoolQit version:   1.4.0
+Python version:    3.10.12
+
+--- Hamiltonian representation ---
+ID:               H_mwis_U5.543
+Transform:         mwis_penalty
+Penalty U:         5.543
+Equivalence:       GROUND_STATE_EQUIVALENT
+Verified:          yes
+
+--- Embedding representation ---
+ID:               R_bld_s50_d3
+Family:            blade
+Embedding error:    0.040423
+Logical fidelity:  0.997067
+
+--- Compilation ---
+Device:            AnalogDeviceWithDMM
+Profile:           max_energy
+Duration:          4.0 us
+Compilation:       SUCCESS
+
+--- Evaluation ---
+Simulator:         LocalEmulator (QutipBackendV2)
+Shots:             1000
+p(opt):            0.0350
+End-to-end success: 0.0350
+Robustness:        0.8528
+
+--- Trace ---
+P(path_n5_seed42) -> H_mwis_U5.543 -> R_bld_s50_d3 -> QoolQit -> S=0.0350
+
+--- Artifact ---
+WestQuant Open Artifact #001
+Search the representation, not just the parameters.

@@ -1,0 +1,40 @@
+REPRESENTATION PASSPORT
+========================
+
+Problem:           MWIS cycle_n6_seed42
+Experiment:        flagship_v3
+QoolQit version:   1.4.0
+Python version:    3.10.12
+
+--- Hamiltonian representation ---
+ID:               H_mwis_U9.805
+Transform:         mwis_penalty
+Penalty U:         9.805
+Equivalence:       GROUND_STATE_EQUIVALENT
+Verified:          yes
+
+--- Embedding representation ---
+ID:               R_int_s42_r0
+Family:            interaction
+Embedding error:    0.411473
+Logical fidelity:  0.885394
+
+--- Compilation ---
+Device:            AnalogDeviceWithDMM
+Profile:           max_energy
+Duration:          4.0 us
+Compilation:       SUCCESS
+
+--- Evaluation ---
+Simulator:         LocalEmulator (QutipBackendV2)
+Shots:             1000
+p(opt):            0.0150
+End-to-end success: 0.0150
+Robustness:        0.5879
+
+--- Trace ---
+P(cycle_n6_seed42) -> H_mwis_U9.805 -> R_int_s42_r0 -> QoolQit -> S=0.0150
+
+--- Artifact ---
+WestQuant Open Artifact #001
+Search the representation, not just the parameters.

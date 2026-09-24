@@ -1,0 +1,80 @@
+{
+  "repgraph_version": "0.1-draft",
+  "artifact": "westquant-open-001",
+  "problem_id": "path_n5_seed42",
+  "experiment_id": "flagship_v3",
+  "nodes": [
+    {
+      "id": "P_path_n5",
+      "type": "problem",
+      "label": "MWIS path n=5 seed=42"
+    },
+    {
+      "id": "H_mwis_U5.543",
+      "type": "hamiltonian",
+      "transform": "mwis_penalty",
+      "U": 5.543,
+      "equivalence": "GROUND_STATE_EQUIVALENT",
+      "terminal_valid": true
+    },
+    {
+      "id": "H_mwis_U6.652",
+      "type": "hamiltonian",
+      "transform": "mwis_penalty",
+      "U": 6.652,
+      "equivalence": "GROUND_STATE_EQUIVALENT",
+      "terminal_valid": true
+    },
+    {
+      "id": "R_int_s42_r0",
+      "type": "embedding",
+      "family": "interaction",
+      "seed": 42,
+      "replicate": 0
+    },
+    {
+      "id": "R_bld_s50_d3",
+      "type": "embedding",
+      "family": "blade",
+      "seed": 50,
+      "depth": 3
+    },
+    {
+      "id": "Q_H5.543_R_int_s42",
+      "type": "program",
+      "compilation_success": true,
+      "duration": 4.0
+    },
+    {
+      "id": "Q_H6.652_R_bld_s50",
+      "type": "program",
+      "compilation_success": true,
+      "duration": 4.0
+    },
+    {
+      "id": "E_H5.543_R_int_s42",
+      "type": "evaluation",
+      "p_opt": 0.029,
+      "end_to_end_success": 0.029,
+      "n_shots": 1000
+    },
+    {
+      "id": "E_H6.652_R_bld_s50",
+      "type": "evaluation",
+      "p_opt": 0.035,
+      "end_to_end_success": 0.035,
+      "n_shots": 1000
+    }
+  ],
+  "edges": [
+    {"source": "P_path_n5", "target": "H_mwis_U5.543", "relation": "has_representation"},
+    {"source": "P_path_n5", "target": "H_mwis_U6.652", "relation": "has_representation"},
+    {"source": "H_mwis_U5.543", "target": "R_int_s42_r0", "relation": "has_embedding"},
+    {"source": "H_mwis_U6.652", "target": "R_bld_s50_d3", "relation": "has_embedding"},
+    {"source": "R_int_s42_r0", "target": "Q_H5.543_R_int_s42", "relation": "compiled_to"},
+    {"source": "R_bld_s50_d3", "target": "Q_H6.652_R_bld_s50", "relation": "compiled_to"},
+    {"source": "Q_H5.543_R_int_s42", "target": "E_H5.543_R_int_s42", "relation": "evaluated"},
+    {"source": "Q_H6.652_R_bld_s50", "target": "E_H6.652_R_bld_s50", "relation": "evaluated"}
+  ],
+  "notes": "Draft 0.1 schema for RepGraph. Illustrative only. See rfcs/RFC-0002-REPGRAPH.md."
+}
